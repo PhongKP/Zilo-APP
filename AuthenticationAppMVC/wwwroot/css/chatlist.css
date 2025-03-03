@@ -1,0 +1,637 @@
+﻿body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #1e2439;
+    color: #ffffff;
+}
+
+.chat-container {
+    display: flex;
+    height: 100vh;
+}
+
+.sidebar {
+    width: 300px;
+    background-color: #1a1f2e;
+    border-right: 1px solid #2c3247;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Tabs styling */
+.tabs {
+    display: flex;
+    border-bottom: 1px solid #2c3247;
+    background-color: #1a1f2e;
+}
+
+.tab {
+    flex: 1;
+    text-align: center;
+    padding: 15px;
+    cursor: pointer;
+    font-weight: 500;
+    color: #8e8e8e;
+    transition: all 0.3s ease;
+}
+
+    .tab.active {
+        color: #ffffff;
+        border-bottom: 2px solid #4169e1;
+    }
+
+.user-profile {
+    display: flex;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #2c3247;
+}
+
+.fa-user-circle {
+    border-radius: 50%;
+    margin-right: 10px;
+    font-size: 16px;
+}
+
+.more-options {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: #ffffff;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.search-bar {
+    padding: 10px;
+    border-bottom: 1px solid #2c3247;
+}
+
+    .search-bar input {
+        width: 100%;
+        padding: 8px;
+        border-radius: 5px;
+        border: none;
+        background-color: #2c3247;
+        color: #ffffff;
+        box-sizing: border-box;
+    }
+
+.panel {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+.contact-list, .group-list {
+    overflow-y: auto;
+    flex-grow: 1;
+}
+
+.contact, .group-item {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+    .contact:hover, .contact.active, .group-item:hover, .group-item.active {
+        background-color: #2c3247;
+    }
+
+.create-group {
+    padding: 15px;
+    border-top: 1px solid #2c3247;
+}
+
+.btn-new-group {
+    width: 100%;
+    padding: 10px;
+    background-color: #4169e1;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.chat-area {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #2c3247;
+}
+
+.group-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-group-action {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    background-color: #4169e1;
+    color: white;
+    font-size: 14px;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+}
+
+.messages {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.message {
+    display: flex;
+    margin-bottom: 20px;
+}
+
+    .message.sent {
+        justify-content: flex-end;
+    }
+
+    .message .avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        margin-right: 10px;
+    }
+
+.message-content {
+    max-width: 60%;
+}
+
+    .message-content p {
+        margin: 0;
+        padding: 10px;
+        border-radius: 10px;
+        background-color: #2c3247;
+        word-break: break-word;
+    }
+
+.message.sent .message-content p {
+    background-color: #4169e1;
+}
+
+.timestamp {
+    font-size: 0.8em;
+    color: #8e8e8e;
+    display: block;
+    margin-top: 5px;
+}
+
+.message-input {
+    display: flex;
+    padding: 20px;
+    border-top: 1px solid #2c3247;
+}
+
+    .message-input input {
+        flex-grow: 1;
+        padding: 10px;
+        border: none;
+        border-radius: 5px;
+        background-color: #2c3247;
+        color: #ffffff;
+    }
+
+.send-button {
+    background-color: #4169e1;
+    border: none;
+    border-radius: 5px;
+    padding: 10px;
+    margin-left: 10px;
+    cursor: pointer;
+}
+
+    .send-button svg {
+        width: 20px;
+        height: 20px;
+        color: #ffffff;
+    }
+
+/* Notification Toast */
+.custom-toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 15px;
+    background-color: #ffffff;
+    color: #333;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    min-width: 250px;
+    font-family: Arial, sans-serif;
+    z-index: 1000;
+    animation: slide-in 0.5s ease, fade-out 0.5s ease 4.5s forwards;
+}
+
+    .custom-toast strong {
+        color: #00b09b;
+        font-weight: bold;
+    }
+
+.toast-progress-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 4px;
+    background-color: #00b09b;
+    border-radius: 0 0 8px 8px;
+    width: 100%;
+    animation: progress 5s linear forwards;
+}
+
+/* Modal styles */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 1000;
+}
+
+.modal-content {
+    background-color: #1a1f2e;
+    margin: 10% auto;
+    padding: 20px;
+    width: 80%;
+    max-width: 500px;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    position: relative;
+    color: #ffffff;
+}
+
+.close {
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    font-size: 28px;
+    font-weight: bold;
+    color: #8e8e8e;
+    cursor: pointer;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+    }
+
+    .form-group input, .form-group textarea, .form-group select {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #2c3247;
+        border-radius: 5px;
+        background-color: #2c3247;
+        color: #ffffff;
+        box-sizing: border-box;
+    }
+
+    .form-group textarea {
+        min-height: 100px;
+        resize: vertical;
+    }
+
+#btn-create-group, #btn-add-member {
+    padding: 10px 20px;
+    background-color: #4169e1;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 500;
+    margin-top: 10px;
+}
+
+/* Member management */
+.member-list {
+    margin-bottom: 20px;
+    max-height: 250px;
+    overflow-y: auto;
+    border: 1px solid #2c3247;
+    border-radius: 5px;
+}
+
+.member-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    border-bottom: 1px solid #2c3247;
+}
+
+.member-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.member-name {
+    font-weight: 500;
+}
+
+.member-email {
+    font-size: 12px;
+    color: #8e8e8e;
+}
+
+.member-admin {
+    font-size: 12px;
+    padding: 3px 8px;
+    background-color: #4169e1;
+    border-radius: 10px;
+    color: white;
+}
+
+.add-member-section {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #2c3247;
+}
+
+    .add-member-section h3 {
+        margin-bottom: 15px;
+    }
+
+    .add-member-section select {
+        width: 70%;
+        padding: 10px;
+        border: 1px solid #2c3247;
+        border-radius: 5px;
+        background-color: #2c3247;
+        color: #ffffff;
+        margin-right: 10px;
+    }
+
+.header-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.header-member-count {
+    font-size: 14px;
+    color: #8e8e8e;
+    margin-top: 5px;
+}
+
+.group-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 15px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+    .group-item .group-name {
+        font-weight: 500;
+        margin-bottom: 3px;
+    }
+
+/* Thêm vào file CSS của bạn */
+.sender-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-right: 10px;
+}
+
+.sender-name {
+    font-size: 12px;
+    color: #8e8e8e;
+    margin-top: 3px;
+    text-align: center;
+    max-width: 50px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Điều chỉnh style của message để phù hợp với thay đổi */
+.message {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 20px;
+}
+
+    .message.sent {
+        justify-content: flex-end;
+    }
+
+.avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+}
+
+
+/* Điều chỉnh lại message-input để giữ layout ngang */
+.message-input {
+    display: flex;
+    align-items: center; /* Căn giữa theo chiều dọc */
+    padding: 20px;
+    border-top: 1px solid #2c3247;
+    background-color: #1a1f2e;
+}
+
+/* Style cho nút đính kèm */
+.attachment-button {
+    cursor: pointer;
+    margin-right: 10px;
+    color: #8e8e8e;
+    transition: color 0.2s;
+}
+
+    .attachment-button:hover {
+        color: #ffffff;
+    }
+
+    .attachment-button svg {
+        width: 20px;
+        height: 20px;
+    }
+
+/* Style cho ô input */
+.message-input input {
+    flex-grow: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    background-color: #2c3247;
+    color: #ffffff;
+}
+
+/* Style cho nút gửi */
+.send-button {
+    background-color: #4169e1;
+    border: none;
+    border-radius: 5px;
+    padding: 10px;
+    margin-left: 10px;
+    cursor: pointer;
+}
+
+    .send-button svg {
+        width: 20px;
+        height: 20px;
+        color: #ffffff;
+    }
+
+/* Phần container xem trước file */
+/* Điều chỉnh giảm kích thước cho file preview container */
+.file-preview-container {
+    display: none;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px;
+    background-color: #2c3247;
+    border-radius: 5px;
+    max-height: 100px;
+    overflow-y: auto;
+    position: absolute;
+    bottom: 75px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60%; /* Giảm từ 80% xuống 60% */
+    max-width: 300px; /* Giảm từ 400px xuống 300px */
+    z-index: 10;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Điều chỉnh kích thước cho từng file preview để phù hợp */
+.file-preview {
+    display: flex;
+    align-items: center;
+    padding: 3px 8px;
+    background-color: #1e2439;
+    border-radius: 5px;
+    position: relative;
+    max-width: 130px; /* Giảm từ 150px xuống 130px */
+}
+
+    /* Giảm kích thước cho file name trong preview */
+.file-preview .file-name {
+        font-size: 11px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 80px; /* Giảm từ 100px xuống 80px */
+}
+
+.file-preview i {
+        margin-right: 8px;
+        color: #8e8e8e;
+}
+
+.file-preview .file-size {
+        font-size: 10px;
+        color: #8e8e8e;
+        margin-left: 5px;
+}
+
+.remove-file {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 1;
+}
+
+/* Giảm kích thước ảnh trong tin nhắn */
+.message-attachments {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 200px; /* Giảm chiều rộng tối đa từ 250px */
+}
+
+/* Giảm kích thước ảnh hiển thị - thay đổi này quan trọng nhất */
+.attachment-item.image img {
+    width: 100%;
+    max-height: 120px; /* Giảm chiều cao tối đa từ 150px */
+    object-fit: contain;
+    background-color: #000;
+    display: block;
+}
+
+/* Đảm bảo message-content không quá rộng */
+.message-content {
+    max-width: 45%; /* Giảm từ 50% */
+}
+
+/* Giảm kích thước cho attachment item */
+.attachment-item {
+    background-color: #343b54;
+    border-radius: 5px;
+    overflow: hidden;
+    max-width: 200px; /* Thêm giới hạn cụ thể */
+}
+
+
+@keyframes slide-in {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fade-out {
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+    }
+}
+
+@keyframes progress {
+    from {
+        width: 100%;
+    }
+
+    to {
+        width: 0;
+    }
+}
