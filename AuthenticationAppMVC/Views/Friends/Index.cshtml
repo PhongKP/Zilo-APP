@@ -1,0 +1,118 @@
+﻿@{
+    ViewData["Title"] = "Friends";
+}
+
+<link rel="stylesheet" href="~/css/friends.css" asp-append-version="true" />
+
+<div class="app-container">
+    <!-- Icon Sidebar (đã có) -->
+    <div class="icon-sidebar">
+        <a href="/Chat" class="icon-item" title="Chat">
+            <i class="bi bi-chat-fill"></i>
+        </a>
+        <a href="/Friends" class="icon-item active" title="Danh bạ">
+            <i class="bi bi-people-fill"></i>
+        </a>
+    </div>
+
+    <!-- Phần nội dung danh bạ -->
+    <div class="friends-container">
+        <div class="friends-header">
+            <h3>Danh bạ</h3>
+            <div class="badge-container">
+                <span class="badge request-badge" id="pending-request-badge">0</span>
+            </div>
+        </div>
+
+        <div class="friends-content">
+            <div class="friends-tabs">
+                <button class="tab-btn active" data-tab="all-friends">Tất cả bạn bè</button>
+                <button class="tab-btn" data-tab="pending-requests">Lời mời kết bạn</button>
+                <button class="tab-btn" data-tab="search-users">Tìm người dùng</button>
+            </div>
+
+            <div class="tab-content" id="all-friends-content">
+                <div class="search-box">
+                    <i class="bi bi-search"></i>
+                    <input type="text" id="friend-search" placeholder="Tìm bạn bè...">
+                </div>
+
+                <div class="friends-list" id="friends-list">
+                    <div class="loading-spinner">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Đang tải...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="pending-requests-content" style="display:none;">
+                <div class="request-tabs">
+                    <button class="request-tab-btn active" data-request-tab="received">Đã nhận</button>
+                    <button class="request-tab-btn" data-request-tab="sent">Đã gửi</button>
+                </div>
+
+                <div class="request-content" id="received-requests">
+                    <div class="loading-spinner">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Đang tải...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="request-content" id="sent-requests" style="display:none;">
+                    <div class="loading-spinner">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Đang tải...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="search-users-content" style="display:none;">
+                <div class="search-box">
+                    <i class="bi bi-search"></i>
+                    <input type="text" id="user-search" placeholder="Tìm kiếm người dùng...">
+                </div>
+
+                <div class="search-results" id="search-results">
+                    <div class="empty-search">
+                        <i class="bi bi-search"></i>
+                        <p>Nhập tên hoặc email để tìm kiếm</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal xác nhận hủy kết bạn -->
+<div class="modal fade" id="unfriendModal" tabindex="-1" aria-labelledby="unfriendModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="unfriendModalLabel">Xác nhận hủy kết bạn</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Bạn có chắc chắn muốn hủy kết bạn với <strong id="unfriend-name"></strong>?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-danger" id="confirm-unfriend-btn">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+<script>
+     toastr.options = {
+         "closeButton": true,
+         "positionClass": "toast-top-right",
+         "timeOut": "3000"
+     };
+</script>
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/js/friends.js" asp-append-version="true"></script>

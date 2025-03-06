@@ -603,6 +603,75 @@
     max-width: 200px; /* Thêm giới hạn cụ thể */
 }
 
+/* Thêm vào đầu file CSS */
+.app-container {
+    display: flex;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* Icon Sidebar - Thanh sidebar nhỏ bên trái */
+.icon-sidebar {
+    width: 60px;
+    height: 100%;
+    background-color: #202225;
+    display: flex;
+    flex-direction: column;
+    padding: 15px 0;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.icon-item {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.2s;
+    color: #b9bbbe;
+    text-decoration: none;
+    position: relative;
+}
+
+.icon-item i {
+   font-size: 22px;
+}
+
+.icon-item:hover {
+   background-color: #36393f;
+   color: #ffffff;
+   border-radius: 30%;
+}
+
+.icon-item.active {
+    background-color: #5865F2;
+    color: #ffffff;
+    border-radius: 30%;
+}
+
+.icon-item:hover::after {
+    content: attr(title);
+    position: absolute;
+    left: 60px;
+    background: #000;
+    color: #fff;
+    padding: 5px 10px;
+    border-radius: 5px;
+    white-space: nowrap;
+    z-index: 1000;
+    font-size: 14px;
+}
+
+/* Sửa lại CSS cho chat-container */
+.chat-container {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
 
 @keyframes slide-in {
     from {

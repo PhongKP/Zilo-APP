@@ -2,6 +2,7 @@ using AuthenticationAppMVC.Data;
 using AuthenticationAppMVC.Hubs;
 using AuthenticationAppMVC.Models;
 using AuthenticationAppMVC.Services;
+using AuthenticationAppMVC.Services.Impl;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -45,6 +46,7 @@ namespace AuthenticationAppMVC
             });
 
             builder.Services.AddScoped<FileService>();
+            builder.Services.AddScoped<IFriendsService, FriendsServiceImpl>();
 
             builder.Services.AddSignalR();
 
@@ -66,6 +68,7 @@ namespace AuthenticationAppMVC
 
             app.UseAuthorization();
             app.MapHub<Chathub>("/chathub");
+            app.MapHub<FriendsHub>("/friendshub");
 
             app.MapControllerRoute(
                 name: "default",

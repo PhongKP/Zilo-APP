@@ -20,6 +20,10 @@ namespace AuthenticationAppMVC.Data
 
         public DbSet<FileAttachment> FileAttachments { get; set; }
 
+        public DbSet<FriendRequest> FriendRequests { get; set; }
+
+        public DbSet<FriendShip> FriendShips { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -67,6 +71,43 @@ namespace AuthenticationAppMVC.Data
                 .HasForeignKey(a => a.GroupMessageId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .IsRequired(false);
+
+            // Cấu hình quan hệ trong giữa FriendRequest và User
+            builder.Entity<FriendRequest>()
+               .HasKey(fr => fr.Id);
+
+            builder.Entity<FriendRequest>()
+                .HasOne(fr => fr.Sender)
+                .WithMany()
+                .HasForeignKey(fr => fr.SenderId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            builder.Entity<FriendRequest>()
+                .HasOne(fr => fr.Receiver)
+                .WithMany()
+                .HasForeignKey(fr => fr.ReceiverId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // Cấu hình quan hệ giữa FriendShip và User
+            builder.Entity<FriendShip>()
+               .HasKey(fr => fr.Id);
+
+            builder.Entity<FriendShip>()
+                .HasOne(fs => fs.User1)
+                .WithMany()
+                .HasForeignKey(fs => fs.User1Id)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            builder.Entity<FriendShip>()
+                .HasOne(fs => fs.User2)
+                .WithMany()
+                .HasForeignKey(fs => fs.User2Id)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // Đảm bảo unique cho mỗi mqh bạn bè
+            builder.Entity<FriendShip>()
+                .HasIndex(f => new { f.User1Id, f.User2Id })
+                .IsUnique();
         }
     }
 }
