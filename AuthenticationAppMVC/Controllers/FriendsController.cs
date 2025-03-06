@@ -72,6 +72,7 @@ namespace AuthenticationAppMVC.Controllers
                 await _hubContext.Clients.User(request.SenderId).SendAsync("ReceiveFriendRequestAccepted", currentUser.Id);
             }
 
+
             return Json(new { success = result });
         }
 
