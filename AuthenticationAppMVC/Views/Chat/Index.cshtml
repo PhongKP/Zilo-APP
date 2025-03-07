@@ -27,6 +27,9 @@
 
             <div class="search-bar">
                 <input type="text" id="search-input" placeholder="Search...">
+                <button class="add-friend-btn" id="add-friend-btn" title="Tìm kiếm và thêm bạn">
+                    <i class="bi bi-person-plus-fill"></i>
+                </button>
             </div>
 
             <!-- Panel danh sách liên hệ -->
@@ -118,7 +121,29 @@
             </div>
         </div>
     </div>
+
+    <!-- Thêm Modal tìm kiếm người dùng và kết bạn -->
+    <div class="modal" id="modal-search-users">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Tìm kiếm người dùng</h2>
+            <div class="form-group">
+                <div class="search-box">
+                    <i class="bi bi-search"></i>
+                    <input type="text" id="search-users-input" placeholder="Nhập tên hoặc email...">
+                </div>
+            </div>
+            <div class="search-results" id="search-users-results">
+                <div class="empty-search">
+                    <i class="bi bi-search"></i>
+                    <p>Nhập tên hoặc email để tìm kiếm</p>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
-<script src="~/js/chatlist.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+<script src="~/js/chatlist.js" asp-append-version="true"></script>

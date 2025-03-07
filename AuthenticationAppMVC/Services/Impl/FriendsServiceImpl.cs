@@ -1,5 +1,6 @@
 ﻿using AuthenticationAppMVC.Data;
 using AuthenticationAppMVC.Models;
+using AuthenticationAppMVC.ViewModels;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -55,7 +56,7 @@ namespace AuthenticationAppMVC.Services.Impl
             {
                 // Kiểm tra xem lời mời kết bạn có tồn tại không
                 var existingFriendRequest = await _dbcontext.FriendRequests.FirstOrDefaultAsync(
-                                                        f => f.Id == requestId && f.ReceiverId == currentUserId);
+                                                        f => f.Id == requestId && f.SenderId == currentUserId);
                 if (existingFriendRequest == null)
                 {
                     return false;
@@ -176,13 +177,24 @@ namespace AuthenticationAppMVC.Services.Impl
             }
         }
 
-        public async Task<List<FriendRequest>?> GetPendingFriendRequestsAsync(string userId)
+        public async Task<List<FriendRequestDTO>?> GetPendingFriendRequestsAsync(string userId)
         {
             try
             {
-                var pendingFriendRequests = _dbcontext.FriendRequests
+                var pendingFriendRequests = await _dbcontext.FriendRequests
                     .Where(f => f.ReceiverId == userId && f.requestStatus == FriendRequestStatus.Pending)
-                    .ToList();
+                    .Include(fr => fr.Sender)
+                    .Select(fr => new FriendRequestDTO
+                    {
+                        id = fr.Id,                
+                        SenderId = fr.SenderId,
+                        ReceiverId = fr.ReceiverId,
+                        RequestStatus = fr.requestStatus,
+                        Sender = fr.Sender,
+                        CreatedAt = fr.CreatedAt,
+                        AcceptedAt = fr.AcceptedAt
+                    })
+                    .ToListAsync();
                 return pendingFriendRequests;
 
             } catch (Exception e)
@@ -192,13 +204,23 @@ namespace AuthenticationAppMVC.Services.Impl
             }
         }
 
-        public async Task<List<FriendRequest>?> GetSentFriendRequestsAsync(string userId)
+        public async Task<List<FriendRequestDTO>?> GetSentFriendRequestsAsync(string userId)
         {
             try
             {
-                var sendingRequests = _dbcontext.FriendRequests
+                var sendingRequests = await _dbcontext.FriendRequests
                     .Where(fr => fr.SenderId == userId && fr.requestStatus == FriendRequestStatus.Pending)
-                    .ToList();
+                    .Include(fr => fr.Receiver)
+                    .Select(fr => new FriendRequestDTO
+                    {
+                        id = fr.Id,
+                        ReceiverId = fr.ReceiverId,
+                        RequestStatus = fr.requestStatus,
+                        Receiver = fr.Receiver,
+                        CreatedAt = fr.CreatedAt,
+                        AcceptedAt = fr.AcceptedAt
+                    })
+                    .ToListAsync();
                 return sendingRequests;
             } catch (Exception e)
             {

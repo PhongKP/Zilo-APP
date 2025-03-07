@@ -3,6 +3,59 @@ const connection = new signalR.HubConnectionBuilder()
     .withUrl("/FriendsHub")
     .build();
 
+// Tạo một đối tượng toastr tạm thời nếu chưa được định nghĩa
+if (typeof toastr === 'undefined') {
+    console.warn("Thư viện toastr không được tìm thấy, sử dụng phiên bản tạm thời");
+
+    // Tạo đối tượng toastr giả
+    window.toastr = {
+        options: {
+            "closeButton": true,
+            "positionClass": "toast-top-right",
+            "timeOut": "3000"
+        },
+
+        // Hàm hiển thị thông báo
+        _showNotification: function (message, type) {
+            // Tạo phần tử thông báo
+            const toast = document.createElement("div");
+            toast.style.position = "fixed";
+            toast.style.top = "20px";
+            toast.style.right = "20px";
+            toast.style.padding = "12px 20px";
+            toast.style.borderRadius = "4px";
+            toast.style.color = "white";
+            toast.style.zIndex = "9999";
+            toast.style.minWidth = "250px";
+            toast.style.boxShadow = "0 3px 10px rgba(0,0,0,0.2)";
+
+            // Đặt màu dựa trên loại thông báo
+            switch (type) {
+                case 'success': toast.style.backgroundColor = "#28a745"; break;
+                case 'error': toast.style.backgroundColor = "#dc3545"; break;
+                case 'warning': toast.style.backgroundColor = "#ffc107"; toast.style.color = "#333"; break;
+                default: toast.style.backgroundColor = "#17a2b8"; // info
+            }
+
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            // Tự động xóa sau 3 giây
+            setTimeout(() => {
+                toast.style.opacity = "0";
+                toast.style.transition = "opacity 0.5s ease";
+                setTimeout(() => toast.remove(), 500);
+            }, 3000);
+        },
+
+        // Các phương thức cho các loại thông báo khác nhau
+        success: function (message) { this._showNotification(message, 'success'); },
+        error: function (message) { this._showNotification(message, 'error'); },
+        warning: function (message) { this._showNotification(message, 'warning'); },
+        info: function (message) { this._showNotification(message, 'info'); }
+    };
+}
+
 // Biến lưu trữ dữ liệu
 let currentFriends = [];
 let pendingRequests = [];
@@ -182,6 +235,7 @@ function loadPendingRequests() {
         url: '/Friends/GetPendingRequests',
         type: 'GET',
         success: function (response) {
+            console.log(`Pending Request: {v} `, response);
             pendingRequests = response;
             renderPendingRequests(response);
             updateRequestBadge();
@@ -211,6 +265,7 @@ function loadSentRequests() {
         url: '/Friends/GetSentRequests',
         type: 'GET',
         success: function (response) {
+            console.log(`Sending Request: `, response);
             sentRequests = response;
             renderSentRequests(response);
         },
@@ -319,6 +374,7 @@ function renderSentRequests(requests) {
 
     let html = '';
     requests.forEach(request => {
+        //console.log(request);
         const receiver = request.receiver;
         const firstLetter = receiver.fullName ? receiver.fullName.charAt(0) : receiver.email.charAt(0);
         const displayName = receiver.fullName || receiver.email;
@@ -581,6 +637,7 @@ $(document).on('click', '.btn-accept-inline', function () {
 
     // Tìm requestId từ userId trong danh sách lời mời đã nhận
     const request = pendingRequests.find(req => req.sender.id === userId);
+    console.log(request);
     if (request) {
         acceptFriendRequest(request.id);
     } else {

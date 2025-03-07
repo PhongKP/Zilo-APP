@@ -1,5 +1,6 @@
 ﻿using AuthenticationAppMVC.Data;
 using AuthenticationAppMVC.Models;
+using AuthenticationAppMVC.ViewModels;
 
 namespace AuthenticationAppMVC.Services
 {
@@ -49,14 +50,14 @@ namespace AuthenticationAppMVC.Services
         /// </summary>
         /// <param name="userId">ID của người dùng</param>
         /// <returns>Danh sách lời mời kết bạn đang chờ xử lý</returns>
-        Task<List<FriendRequest>> GetPendingFriendRequestsAsync(string userId);
+        Task<List<FriendRequestDTO>> GetPendingFriendRequestsAsync(string userId);
 
         /// <summary>
         /// Lấy danh sách lời mời kết bạn đã gửi của một người dùng
         /// </summary>
         /// <param name="userId">ID của người dùng</param>
         /// <returns>Danh sách lời mời kết bạn đã gửi và đang chờ phản hồi</returns>
-        Task<List<FriendRequest>> GetSentFriendRequestsAsync(string userId);
+        Task<List<FriendRequestDTO>> GetSentFriendRequestsAsync(string userId);
 
         /// <summary>
         /// Lấy danh sách bạn bè của một người dùng

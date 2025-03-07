@@ -3,6 +3,59 @@
     .configureLogging(signalR.LogLevel.Information)
     .build();
 
+// Tạo một đối tượng toastr tạm thời nếu chưa được định nghĩa
+if (typeof toastr === 'undefined') {
+    console.warn("Thư viện toastr không được tìm thấy, sử dụng phiên bản tạm thời");
+
+    // Tạo đối tượng toastr giả
+    window.toastr = {
+        options: {
+            "closeButton": true,
+            "positionClass": "toast-top-right",
+            "timeOut": "3000"
+        },
+
+        // Hàm hiển thị thông báo
+        _showNotification: function (message, type) {
+            // Tạo phần tử thông báo
+            const toast = document.createElement("div");
+            toast.style.position = "fixed";
+            toast.style.top = "20px";
+            toast.style.right = "20px";
+            toast.style.padding = "12px 20px";
+            toast.style.borderRadius = "4px";
+            toast.style.color = "white";
+            toast.style.zIndex = "9999";
+            toast.style.minWidth = "250px";
+            toast.style.boxShadow = "0 3px 10px rgba(0,0,0,0.2)";
+
+            // Đặt màu dựa trên loại thông báo
+            switch (type) {
+                case 'success': toast.style.backgroundColor = "#28a745"; break;
+                case 'error': toast.style.backgroundColor = "#dc3545"; break;
+                case 'warning': toast.style.backgroundColor = "#ffc107"; toast.style.color = "#333"; break;
+                default: toast.style.backgroundColor = "#17a2b8"; // info
+            }
+
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            // Tự động xóa sau 3 giây
+            setTimeout(() => {
+                toast.style.opacity = "0";
+                toast.style.transition = "opacity 0.5s ease";
+                setTimeout(() => toast.remove(), 500);
+            }, 3000);
+        },
+
+        // Các phương thức cho các loại thông báo khác nhau
+        success: function (message) { this._showNotification(message, 'success'); },
+        error: function (message) { this._showNotification(message, 'error'); },
+        warning: function (message) { this._showNotification(message, 'warning'); },
+        info: function (message) { this._showNotification(message, 'info'); }
+    };
+}
+
 const messageInput = document.getElementById("message-input");
 const sendButton = document.getElementById("send-btn");
 const chatContent = document.querySelector(".messages");
@@ -16,6 +69,9 @@ const btnGroupMembers = document.getElementById("btn-group-members");
 const btnLeaveGroup = document.getElementById("btn-leave-group");
 const groupActionsDiv = document.querySelector(".group-actions");
 const contactNameElement = document.querySelector(".contact-name");
+const btnAddFriend = document.getElementById("add-friend-btn");
+const searchUsersInput = document.getElementById("search-users-input");
+const searchUsersResults = document.getElementById("search-users-results");
 
 // File upload elements
 const fileUploadInput = document.getElementById("file-upload");
@@ -31,6 +87,7 @@ const groupMemberList = document.getElementById("group-member-list");
 const selectNewMember = document.getElementById("select-new-member");
 const btnAddMember = document.getElementById("btn-add-member");
 const headerMemberCount = document.getElementById("header-member-count");
+const modalSearchUsers = document.getElementById("modal-search-users");
 
 // State variables
 let selectedContact = null;
@@ -186,11 +243,38 @@ function setupEventHandlers() {
         modalCreateGroup.style.display = "block";
     });
 
+    btnAddFriend.addEventListener("click", () => {
+        searchUsersInput.value = "";
+        searchUsersResults.innerHTML = `
+            <div class="empty-search">
+                <i class="bi bi-search"></i>
+                <p>Nhập tên hoặc email để tìm kiếm</p>
+            </div>
+        `;
+        modalSearchUsers.style.display = "block";
+    });
+
+    // Event handler cho ô tìm kiếm người dùng
+    searchUsersInput.addEventListener("keyup", function (e) {
+        const searchTerm = e.target.value.trim();
+        if (searchTerm.length >= 2) {
+            searchUsers(searchTerm);
+        } else {
+            searchUsersResults.innerHTML = `
+                <div class="empty-search">
+                    <i class="bi bi-search"></i>
+                    <p>Nhập tên hoặc email để tìm kiếm</p>
+                </div>
+            `;
+        }
+    });
+
     // Close modals
     document.querySelectorAll(".close").forEach(closeBtn => {
         closeBtn.addEventListener("click", function () {
             modalCreateGroup.style.display = "none";
             modalGroupMembers.style.display = "none";
+            modalSearchUsers.style.display = "none";
         });
     });
 
@@ -209,6 +293,9 @@ function setupEventHandlers() {
         }
         if (event.target === modalGroupMembers) {
             modalGroupMembers.style.display = "none";
+        }
+        if (event.target === modalSearchUsers) {
+            modalSearchUsers.style.display = "none";
         }
     });
 }
@@ -863,6 +950,285 @@ function showNotification(senderEmail, message) {
     `;
     document.body.appendChild(notification);
     setTimeout(() => notification.remove(), 5000);
+}
+
+// Hàm tìm kiếm người dùng
+function searchUsers(keyword) {
+    searchUsersResults.innerHTML = `
+        <div class="loading-spinner">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Đang tìm kiếm...</span>
+            </div>
+        </div>
+    `;
+
+    $.ajax({
+        url: '/Users/SearchUsers',
+        type: 'GET',
+        data: { keyword: keyword },
+        success: function (response) {
+            renderUserSearchResults(response);
+        },
+        error: function (error) {
+            console.error('Lỗi khi tìm kiếm người dùng:', error);
+            searchUsersResults.innerHTML = `
+                <div class="alert alert-danger">
+                    Có lỗi xảy ra khi tìm kiếm người dùng.
+                </div>
+            `;
+        }
+    });
+}
+
+// Hàm hiển thị kết quả tìm kiếm người dùng
+function renderUserSearchResults(users) {
+    if (!users || users.length === 0) {
+        searchUsersResults.innerHTML = `
+            <div class="search-no-results">
+                <p>Không tìm thấy người dùng nào khớp với từ khóa.</p>
+            </div>
+        `;
+        return;
+    }
+
+    let html = '';
+    users.forEach(user => {
+        const firstLetter = user.name ? user.name.charAt(0) : user.username.charAt(0);
+        const displayName = user.name || user.username;
+
+        let actionButton = '';
+
+        switch (user.status) {
+            case 'NotFriends':
+                actionButton = `
+                    <button class="friend-btn btn-add" data-id="${user.id}">
+                        <i class="bi bi-person-plus-fill"></i> Kết bạn
+                    </button>
+                `;
+                break;
+            case 'RequestSent':
+                actionButton = `
+                    <button class="friend-btn btn-pending" disabled>
+                        <i class="bi bi-clock-fill"></i> Đã gửi lời mời
+                    </button>
+                `;
+                break;
+            case 'RequestReceived':
+                actionButton = `
+                    <button class="friend-btn btn-accept-inline" data-id="${user.id}">
+                        <i class="bi bi-check-lg"></i> Chấp nhận
+                    </button>
+                    <button class="friend-btn btn-decline-inline" data-id="${user.id}">
+                        <i class="bi bi-x-lg"></i> Từ chối
+                    </button>
+                `;
+                break;
+            case 'Friends':
+                actionButton = `
+                    <button class="friend-btn btn-chat" data-id="${user.id}">
+                        <i class="bi bi-chat-fill"></i> Chat
+                    </button>
+                    <button class="friend-btn btn-unfriend" data-id="${user.id}" data-name="${displayName}">
+                        <i class="bi bi-person-dash-fill"></i> Hủy kết bạn
+                    </button>
+                `;
+                break;
+        }
+        html += `
+            <div class="user-card">
+                <div class="friend-info">
+                    <div class="friend-avatar">${firstLetter.toUpperCase()}</div>
+                    <div class="friend-details">
+                        <h4>${displayName}</h4>
+                        <p>${user.email}</p>
+                    </div>
+                </div>
+                <div class="friend-actions">
+                    ${actionButton}
+                </div>
+            </div>
+        `;
+    });
+
+    searchUsersResults.innerHTML = html;
+
+    // Thêm event listeners cho các nút hành động
+    addFriendActionListeners();
+}
+
+// Hàm thêm các event handlers cho các nút trong kết quả tìm kiếm
+function addFriendActionListeners() {
+    // Xử lý sự kiện nút kết bạn
+    document.querySelectorAll('.btn-add').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const userId = this.getAttribute('data-id');
+            sendFriendRequest(userId);
+        });
+    });
+
+    // Xử lý sự kiện nút chấp nhận lời mời
+    document.querySelectorAll('.btn-accept-inline').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const userId = this.getAttribute('data-id');
+            acceptFriendRequest(userId);
+        });
+    });
+
+    // Xử lý sự kiện nút từ chối lời mời
+    document.querySelectorAll('.btn-decline-inline').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const userId = this.getAttribute('data-id');
+            declineFriendRequest(userId);
+        });
+    });
+
+    // Xử lý sự kiện nút chat
+    document.querySelectorAll('.btn-chat').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const userId = this.getAttribute('data-id');
+            // Tìm kiếm liên hệ tương ứng và chọn để chat
+            const contact = document.querySelector(`.contact[data-user-id="${userId}"]`);
+            if (contact) {
+                selectContact(contact);
+                modalSearchUsers.style.display = "none";
+                // Chuyển sang tab liên hệ nếu đang ở tab nhóm
+                if (tabGroups.classList.contains("active")) {
+                    switchTab("contacts");
+                }
+            }
+        });
+    });
+
+    // Xử lý sự kiện nút hủy kết bạn
+    document.querySelectorAll('.btn-unfriend').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const userId = this.getAttribute('data-id');
+            const userName = this.getAttribute('data-name');
+            if (confirm(`Bạn có chắc muốn hủy kết bạn với ${userName}?`)) {
+                unfriend(userId);
+            }
+        });
+    });
+}
+
+// Hàm gửi lời mời kết bạn
+function sendFriendRequest(receiverId) {
+    $.ajax({
+        url: '/Friends/SendFriendRequest',
+        type: 'POST',
+        data: { receiverId: receiverId },
+        success: function (response) {
+            if (response.success) {
+                toastr.success('Đã gửi lời mời kết bạn');
+                // Cập nhật giao diện
+                const keyword = searchUsersInput.value.trim();
+                searchUsers(keyword);
+            } else {
+                toastr.error('Không thể gửi lời mời kết bạn');
+            }
+        },
+        error: function (error) {
+            console.error('Lỗi khi gửi lời mời kết bạn:', error);
+            toastr.error('Đã xảy ra lỗi khi gửi lời mời kết bạn');
+        }
+    });
+}
+
+// Hàm chấp nhận lời mời kết bạn
+function acceptFriendRequest(userId) {
+    $.ajax({
+        url: '/Friends/GetPendingRequests',
+        type: 'GET',
+        success: function (requests) {
+            // Tìm request ID từ user ID
+            const request = requests.find(req => req.sender.id === userId);
+            if (request) {
+                $.ajax({
+                    url: '/Friends/AcceptFriendRequest',
+                    type: 'POST',
+                    data: { requestId: request.id },
+                    success: function (response) {
+                        if (response.success) {
+                            toastr.success('Đã chấp nhận lời mời kết bạn');
+                            // Cập nhật giao diện
+                            const keyword = searchUsersInput.value.trim();
+                            searchUsers(keyword);
+                        } else {
+                            toastr.error('Không thể chấp nhận lời mời kết bạn');
+                        }
+                    },
+                    error: function (error) {
+                        console.error('Lỗi khi chấp nhận lời mời kết bạn:', error);
+                        toastr.error('Đã xảy ra lỗi khi chấp nhận lời mời kết bạn');
+                    }
+                });
+            }
+        },
+        error: function (error) {
+            console.error('Lỗi khi lấy danh sách lời mời:', error);
+            toastr.error('Đã xảy ra lỗi khi xử lý lời mời kết bạn');
+        }
+    });
+}
+
+// Hàm từ chối lời mời kết bạn
+function declineFriendRequest(userId) {
+    $.ajax({
+        url: '/Friends/GetPendingRequests',
+        type: 'GET',
+        success: function (requests) {
+            // Tìm request ID từ user ID
+            const request = requests.find(req => req.sender.id === userId);
+            if (request) {
+                $.ajax({
+                    url: '/Friends/DeclineFriendRequest',
+                    type: 'POST',
+                    data: { requestId: request.id },
+                    success: function (response) {
+                        if (response.success) {
+                            toastr.success('Đã từ chối lời mời kết bạn');
+                            // Cập nhật giao diện
+                            const keyword = searchUsersInput.value.trim();
+                            searchUsers(keyword);
+                        } else {
+                            toastr.error('Không thể từ chối lời mời kết bạn');
+                        }
+                    },
+                    error: function (error) {
+                        console.error('Lỗi khi từ chối lời mời kết bạn:', error);
+                        toastr.error('Đã xảy ra lỗi khi từ chối lời mời kết bạn');
+                    }
+                });
+            }
+        },
+        error: function (error) {
+            console.error('Lỗi khi lấy danh sách lời mời:', error);
+            toastr.error('Đã xảy ra lỗi khi xử lý lời mời kết bạn');
+        }
+    });
+}
+
+// Hàm hủy kết bạn
+function unfriend(friendId) {
+    $.ajax({
+        url: '/Friends/Unfriend',
+        type: 'POST',
+        data: { friendId: friendId },
+        success: function (response) {
+            if (response.success) {
+                toastr.success('Đã hủy kết bạn');
+                // Cập nhật giao diện
+                const keyword = searchUsersInput.value.trim();
+                searchUsers(keyword);
+            } else {
+                toastr.error('Không thể hủy kết bạn');
+            }
+        },
+        error: function (error) {
+            console.error('Lỗi khi hủy kết bạn:', error);
+            toastr.error('Đã xảy ra lỗi khi hủy kết bạn');
+        }
+    });
 }
 
 init();
