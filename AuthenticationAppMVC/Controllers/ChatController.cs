@@ -66,7 +66,8 @@ namespace AuthenticationAppMVC.Controllers
                     m.Content,
                     m.SenderEmail,
                     m.Timestamp,
-                    m.HasAttachment
+                    m.HasAttachment,
+                    Status = (int)m.Status
                 })
                 .ToListAsync();
 
@@ -101,13 +102,128 @@ namespace AuthenticationAppMVC.Controllers
                 m.SenderEmail,
                 m.Timestamp,
                 m.HasAttachment,
+                m.Status,
                 Attachments = m.HasAttachment && attachmentsByMessageId.ContainsKey(m.Id)
                 ? attachmentsByMessageId[m.Id]
                     : new List<AttachmentDTO>()
             }).ToList();
 
+            // Đánh dấu tin nhắn là đã xem nếu người dùng hiện tại là người nhận
+            var unreadMessages = await _dbContext.Messages
+                .Where(m => m.ReceiverEmail == currentUser.Id && m.Status != MessageStatus.Read && m.SenderEmail == receiverEmailReal)
+                .ToListAsync();
+
+            if (unreadMessages.Any())
+            {
+                foreach (var message in unreadMessages)
+                {
+                    message.Status = MessageStatus.Read;
+                }
+
+                await _dbContext.SaveChangesAsync();
+
+                foreach (var message in unreadMessages)
+                {
+                    await hubContext.Clients.User(message.SenderEmail).SendAsync(
+                        "MessageStatusUpdated",
+                        message.Id,
+                        (int)MessageStatus.Read);
+                }
+            }
+
             return Json(result);
         }
+
+        [HttpGet]
+        public async Task<IActionResult> GetMessageStatus(long messageId)
+        {
+            var currentUser = await userManager.GetUserAsync(User);
+            if (currentUser == null) return Unauthorized();
+
+            var message = await _dbContext.Messages.FindAsync(messageId);
+            if (message == null) return NotFound();
+
+            // Kiểm tra quyền truy cập (sender hoặc receiver)
+            if (message.SenderEmail != currentUser.Email && message.ReceiverEmail != currentUser.Id)
+            {
+                return Forbid();
+            }
+
+            return Ok(new { status = (int)message.Status });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetMessageStatuses(string receiverId, int limit = 50)
+        {
+            var currentUser = await userManager.GetUserAsync(User);
+            if (currentUser == null) return Unauthorized();
+
+            // Lấy trạng thái của các tin nhắn đã gửi cho người nhận cụ thể
+            var messages = await _dbContext.Messages
+                .Where(m => m.SenderEmail == currentUser.Email && m.ReceiverEmail == receiverId)
+                .OrderByDescending(m => m.Timestamp)
+                .Take(limit)
+                .Select(m => new { m.Id, m.Timestamp, Status = (int)m.Status })
+                .ToListAsync();
+
+            return Ok(messages);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> MarkMessageAsRead([FromBody] long messageId)
+        {
+            var currentUser = await userManager.GetUserAsync(User);
+            if (currentUser == null) return Unauthorized();
+
+            var message = await _dbContext.Messages
+                .FirstOrDefaultAsync(m => m.Id == messageId && m.ReceiverEmail == currentUser.Id);
+
+            if (message == null) return NotFound();
+
+            if (message.Status != MessageStatus.Read)
+            {
+                message.Status = MessageStatus.Read;
+                await _dbContext.SaveChangesAsync();
+
+                await hubContext.Clients.User(message.SenderEmail).SendAsync(
+                    "MessageStatusUpdated",
+                    message.Id,
+                    (int)MessageStatus.Read);
+            }
+
+            return Ok(new { status = (int)message.Status });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> MarkAllMessagesAsRead([FromBody] string senderId)
+        {
+            var currentUser = await userManager.GetUserAsync(User);
+            if (currentUser == null) return Unauthorized();
+
+            var sender = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == senderId);
+            if (sender == null) return NotFound();
+
+            var unreadMessages = await _dbContext.Messages
+                .Where(m => m.SenderEmail == sender.Email && m.ReceiverEmail == currentUser.Id && m.Status != MessageStatus.Read)
+                .ToListAsync();
+
+            if (unreadMessages.Any())
+            {
+                foreach (var message in unreadMessages)
+                {
+                    message.Status = MessageStatus.Read;
+                }
+
+                await _dbContext.SaveChangesAsync();
+
+                await hubContext.Clients.User(sender.Email).SendAsync(
+                    "MessagesRead",
+                    unreadMessages.Select(m => m.Id).ToList());
+            }
+
+            return Ok(new { success = true });
+        }
+
 
         [HttpPost]
         public async Task<IActionResult> SendMessage([FromForm] string receiverId, [FromForm] string content)
@@ -131,16 +247,27 @@ namespace AuthenticationAppMVC.Controllers
                 Content = content,
                 SenderEmail = currentUser.Email!,
                 ReceiverEmail = receiverId,
-                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                Status = MessageStatus.Sent
             };
 
             _dbContext.Messages.Add(message);
             await _dbContext.SaveChangesAsync();
 
-            await hubContext.Clients.User(receiverId).SendAsync("ReceiveMessage", currentUser.Email, content);
-            await hubContext.Clients.User(currentUser.Id).SendAsync("ReceiveMessage", currentUser.Email, content);
+            await hubContext.Clients.User(receiverId).SendAsync("ReceiveMessage", currentUser.Email, content,
+                message.Id, message.Timestamp
+            );
 
-            return Ok(new { success = true });
+            await hubContext.Clients.User(currentUser.Id).SendAsync("ReceiveMessage", currentUser.Email, content,
+                message.Id, message.Timestamp
+            );
+
+            return Ok(new { 
+                success = true, 
+                messageId = message.Id,
+                status = (int) message.Status,
+                timestamp = message.Timestamp
+            });
         }
 
         [HttpPost]
@@ -180,7 +307,8 @@ namespace AuthenticationAppMVC.Controllers
                     SenderEmail = currentUser.Email!,
                     ReceiverEmail = receiverId,
                     Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-                    HasAttachment = true
+                    HasAttachment = true,
+                    Status = MessageStatus.Sent
                 };
 
                 // Thêm tin nhắn vào database
@@ -202,12 +330,24 @@ namespace AuthenticationAppMVC.Controllers
                 };
 
                 await hubContext.Clients.User(receiverId).SendAsync("ReceiveMessageWithFile",
-                    currentUser.Email, content, new List<AttachmentDTO> { attachmentDto });
+                    currentUser.Email, content, new List<AttachmentDTO> { attachmentDto },
+                    message.Id, message.Timestamp
+                );
 
                 await hubContext.Clients.User(currentUser.Id).SendAsync("ReceiveMessageWithFile",
-                    currentUser.Email, content, new List<AttachmentDTO> { attachmentDto });
+                    currentUser.Email, content, new List<AttachmentDTO> { attachmentDto },
+                    message.Id, message.Timestamp
+                );
 
-                return Ok(new { success = true });
+                return Ok(new
+                {
+                    success = true,
+                    messageId = message.Id,
+                    status = (int)message.Status,
+                    timestamp = message.Timestamp,
+                    attachmentId = attachment.Id,
+                    fileName = attachment.FileName
+                });
             }
             catch (Exception ex)
             {

@@ -20,6 +20,8 @@ namespace AuthenticationAppMVC.Models
 
         public bool HasAttachment { get; set; } = false;
 
+        public MessageStatus Status { get; set; } = MessageStatus.Sent;
+
         public virtual ICollection<FileAttachment> Attachments { get; set; }
     }
 }

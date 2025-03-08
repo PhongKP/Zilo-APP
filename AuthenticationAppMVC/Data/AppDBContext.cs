@@ -24,6 +24,8 @@ namespace AuthenticationAppMVC.Data
 
         public DbSet<FriendShip> FriendShips { get; set; }
 
+        public DbSet<GroupMessageReadStatus> GroupMessageReadStatuses { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -71,6 +73,21 @@ namespace AuthenticationAppMVC.Data
                 .HasForeignKey(a => a.GroupMessageId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .IsRequired(false);
+
+            // Cấu hình quan hệ giữa GroupMessage và GroupMessageReadStatus
+            builder.Entity<GroupMessage>()
+                .HasMany(gm => gm.ReadBys)
+                .WithOne(r => r.GroupMessage)
+                .HasForeignKey(r => r.GroupMessageId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Cấu hình quan hệ giữa GroupMessageReadStatus và User
+            builder.Entity<GroupMessageReadStatus>()
+                .HasOne(r => r.User)
+                .WithMany()
+                .HasForeignKey(r => r.UserId)
+                .OnDelete(DeleteBehavior.NoAction);
+
 
             // Cấu hình quan hệ trong giữa FriendRequest và User
             builder.Entity<FriendRequest>()

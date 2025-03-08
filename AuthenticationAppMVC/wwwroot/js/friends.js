@@ -401,7 +401,7 @@ function renderSentRequests(requests) {
     $('#sent-requests').html(html);
 }
 
-// Hàm tìm kiếm người dùng
+// Hàm tìm kiếm người dùng (Bạn bè)
 function searchUsers(keyword) {
     $.ajax({
         url: '/Friends/SearchFriends',
