@@ -195,7 +195,8 @@ namespace AuthenticationAppMVC.Controllers
                 GroupId = groupId,
                 SenderId = currentUser.Id,
                 Content = content,
-                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                Status = MessageStatus.Sent
             };
 
             appDBContext.GroupMessages.Add(message);
@@ -245,7 +246,8 @@ namespace AuthenticationAppMVC.Controllers
                     SenderId = currentUser.Id,
                     Content = content,
                     Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-                    HasAttachment = true
+                    HasAttachment = true,
+                    Status = MessageStatus.Sent
                 };
 
                 // Thêm tin nhắn vào database
@@ -518,6 +520,60 @@ namespace AuthenticationAppMVC.Controllers
             return Json(new { success = true });
         }
 
+        [HttpPost]
+        public async Task<IActionResult> MarkAsDelivered([FromForm] string messageId)
+        {
+            var currentUser = await userManager.GetUserAsync(User);
+            if (currentUser == null) return Unauthorized();
 
+            var message = await appDBContext.GroupMessages.FindAsync(messageId);
+            if (message == null) return NotFound("Message not found");
+
+            var isMember = await appDBContext.GroupMembers
+                .AnyAsync(gm => gm.GroupId == message.GroupId && gm.UserId == currentUser.Id);
+
+            if (!isMember)
+            {
+                return Forbid();
+            }
+
+            message.Status = MessageStatus.Delivered;
+            appDBContext.GroupMessages.Update(message);
+            await appDBContext.SaveChangesAsync();
+
+            await hubContext.Clients.Group(message.GroupId).SendAsync(
+                "MessageDelivered",
+                message.Id);
+
+            return Ok(new { success = true });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> MarkAsRead([FromForm] string messageId)
+        {
+            var currentUser = await userManager.GetUserAsync(User);
+            if (currentUser == null) return Unauthorized();
+
+            var message = await appDBContext.GroupMessages.FindAsync(messageId);
+            if (message == null) return NotFound("Message not found");
+
+            var isMember = await appDBContext.GroupMembers
+                .AnyAsync(gm => gm.GroupId == message.GroupId && gm.UserId == currentUser.Id);
+
+            if (!isMember)
+            {
+                return Forbid();
+            }
+
+            message.Status = MessageStatus.Read;
+            appDBContext.GroupMessages.Update(message);
+            await appDBContext.SaveChangesAsync();
+
+            await hubContext.Clients.Group(message.GroupId).SendAsync(
+                "MessageRead",
+                message.Id);
+
+            return Ok(new { success = true });
+        }
     }
 }

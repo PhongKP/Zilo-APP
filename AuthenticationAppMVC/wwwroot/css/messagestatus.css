@@ -1,0 +1,73 @@
+﻿/* Message status styling */
+.message-status-container {
+    display: flex;
+    justify-content: flex-end;
+    font-size: 0.75rem;
+    margin-top: 2px;
+    padding-right: 8px;
+}
+
+.message-status {
+    padding: 0 4px;
+    cursor: default;
+}
+
+    /* Message status icons */
+    .message-status [class*="fa-check"] {
+        font-size: 0.7rem;
+    }
+
+    .message-status[data-status="0"] [class*="fa-check"] {
+        opacity: 0.7;
+    }
+
+    .message-status[data-status="1"] [class*="fa-check-double"] {
+        opacity: 0.8;
+    }
+
+    .message-status[data-status="2"] [class*="fa-check-double"] {
+        color: #0d6efd;
+        opacity: 1;
+    }
+
+/* Position status indicators for different message types */
+.message.sent .message-status-container {
+    margin-right: 8px;
+}
+
+.message:not(.sent) .message-status-container {
+    display: none; /* Only show status for outgoing messages */
+}
+
+/* Tooltip styling improvements */
+.message-status[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #212529;
+    color: white;
+    text-align: center;
+    border-radius: 4px;
+    padding: 4px 8px;
+    z-index: 1000;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0.9;
+}
+
+.message-status[title] {
+    position: relative;
+}
+
+/* Message time with status */
+.message-time-status {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+    font-size: 0.75rem;
+    color: #6c757d;
+}

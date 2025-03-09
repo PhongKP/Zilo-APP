@@ -109,6 +109,11 @@ async function init() {
 
     // Load user's groups
     loadUserGroups();
+
+    // Khởi tạo chức năng theo dõi trạng thái tin nhắn
+    if (typeof initMessageStatusTracking === 'function') {
+        initMessageStatusTracking();
+    }
 }
 
 async function getEmailFromCookie() {
@@ -148,6 +153,10 @@ function setupSignalREvents() {
             } else if (senderEmail === receiverEmail) {
                 console.log("Displaying message from other");
                 appendMessage(senderEmail, message, timestamp);
+                // Đánh dấu tin nhắn là đã đọc vì nó đang hiển thị
+                if (typeof markMessageAsRead === 'function') {
+                    markMessageAsRead(messageId, false);
+                }
             } else {
                 console.log("Showing notification - senderEmail:", senderEmail);
                 const senderName = senderEmail.split("@")[0];
@@ -172,6 +181,10 @@ function setupSignalREvents() {
             } else if (senderEmail === receiverEmail) {
                 console.log("Displaying message with file from other");
                 appendMessageWithAttachments(senderEmail, message, timestamp, attachments);
+                // Đánh dấu tin nhắn là đã đọc vì nó đang hiển thị
+                if (typeof markMessageAsRead === 'function') {
+                    markMessageAsRead(messageId, false);
+                }
             } else {
                 console.log("Showing notification - senderEmail:", senderEmail);
                 const senderName = senderEmail.split("@")[0];
@@ -191,6 +204,10 @@ function setupSignalREvents() {
         if (currentChatType === "group" && currentGroupId === groupId) {
             // We're currently viewing this group, append message
             appendMessage(senderEmail, message, timestamp);
+            // Nếu không phải tin nhắn của mình, đánh dấu là đã đọc
+            if (senderEmail !== currentUserEmail && typeof markMessageAsRead === 'function') {
+                markMessageAsRead(messageId, true);
+            }
         } else {
             // We're not viewing this group, show notification
             const groupName = document.querySelector(`.group-item[data-group-id="${groupId}"]`)?.getAttribute("data-name") || "Group";
@@ -206,11 +223,44 @@ function setupSignalREvents() {
         if (currentChatType === "group" && currentGroupId === groupId) {
             // We're currently viewing this group, append message with file
             appendMessageWithAttachments(senderEmail, message, timestamp, attachments);
+            // Nếu không phải tin nhắn của mình, đánh dấu là đã đọc
+            if (senderEmail !== currentUserEmail && typeof markMessageAsRead === 'function') {
+                markMessageAsRead(messageId, true);
+            }
         } else {
             // We're not viewing this group, show notification
             const groupName = document.querySelector(`.group-item[data-group-id="${groupId}"]`)?.getAttribute("data-name") || "Group";
             const displayName = senderName || senderEmail.split("@")[0];
             showNotification(`${displayName} đã nhắc bạn từ (${groupName})`, `${message} [Đã gửi file]`);
+        }
+    });
+
+    connection.on("MessageStatusUpdated", (messageId, status) => {
+        console.log(`Message ${messageId} status updated to ${status}`);
+        updateMessageStatusUI(messageId, status);
+    });
+
+    connection.on("MessagesRead", (messageIds) => {
+        console.log(`Messages read: ${messageIds.join(', ')}`);
+        messageIds.forEach(id => {
+            updateMessageStatusUI(id, MessageStatusEnum.Read);
+        });
+    });
+
+    connection.on("GroupMessageStatusUpdated", (messageId, status) => {
+        console.log(`Group message ${messageId} status updated to ${status}`);
+        updateMessageStatusUI(messageId, status);
+    });
+
+    connection.on("GroupMessageRead", (messageId, userId, userEmail) => {
+        console.log(`Group message ${messageId} read by ${userEmail}`);
+        updateMessageStatusUI(messageId, MessageStatusEnum.Read);
+    });
+
+    connection.on("GroupMessagesReadByUser", (groupId, userId, userEmail) => {
+        console.log(`All messages in group ${groupId} read by ${userEmail}`);
+        if (typeof updateGroupUnreadStatus === 'function') {
+            updateGroupUnreadStatus(groupId);
         }
     });
 }
@@ -418,6 +468,11 @@ function selectContact(contactElement) {
     // Clear chat and load messages
     chatContent.innerHTML = "";
     loadMessages(currentReceiverId);
+
+    const contactEmail = contactElement.getAttribute("data-email");
+    if (contactEmail) {
+        markAllMessagesAsRead(contactEmail);
+    }
 }
 
 function selectGroup(groupElement) {
@@ -450,6 +505,12 @@ function selectGroup(groupElement) {
     // Join the SignalR group
     connection.invoke("JoinGroup", currentGroupId)
         .catch(err => console.error("Error joining group:", err));
+
+    // Đánh dấu tất cả tin nhắn nhóm là đã đọc
+    const groupId = groupElement.getAttribute("data-group-id");
+    if (groupId) {
+        markAllMessagesAsRead(null, groupId);
+    }
 }
 
 function clearFileSelection() {
@@ -557,9 +618,16 @@ async function loadGroupMessages(groupId) {
         // Add each message
         messages.forEach(msg => {
             if (msg.hasAttachment && msg.attachments && msg.attachments.length > 0) {
-                appendMessageWithAttachments(msg.senderEmail, msg.content, msg.timestamp, msg.attachments);
+                appendMessageWithAttachments(msg.senderEmail, msg.content, msg.timestamp, msg.attachments, msg.id);
             } else {
-                appendMessage(msg.senderEmail, msg.content, msg.timestamp);
+                appendMessage(msg.senderEmail, msg.content, msg.timestamp, msg.id);
+            }
+        });
+
+        // Thiết lập observer để đánh dấu tin nhắn là đã đọc khi hiển thị
+        document.querySelectorAll('.group-message[data-message-id]').forEach(el => {
+            if (window.observeNewMessage) {
+                window.observeNewMessage(el);
             }
         });
 
@@ -574,16 +642,20 @@ async function loadMessages(receiverId) {
     try {
         const response = await fetch(`/Chat/GetMessages?receiverId=${receiverId}`);
         const messages = await response.json();
-
         // Clear existing messages
         chatContent.innerHTML = "";
 
         // Add each message
         messages.forEach(msg => {
             if (msg.hasAttachment && msg.attachments && msg.attachments.length > 0) {
-                appendMessageWithAttachments(msg.senderEmail, msg.content, msg.timestamp, msg.attachments);
+                appendMessageWithAttachments(msg.senderEmail, msg.content, msg.timestamp, msg.attachments, msg.id);
             } else {
-                appendMessage(msg.senderEmail, msg.content, msg.timestamp);
+                appendMessage(msg.senderEmail, msg.content, msg.timestamp, msg.id);
+            }
+        });
+        document.querySelectorAll('.message[data-message-id]').forEach(el => {
+            if (window.observeNewMessage) {
+                window.observeNewMessage(el);
             }
         });
 
@@ -812,7 +884,7 @@ async function leaveCurrentGroup() {
     }
 }
 
-function appendMessage(senderEmail, message, timestamp) {
+function appendMessage(senderEmail, message, timestamp, messageId) {
     const div = document.createElement("div");
     const isSentByMe = senderEmail === currentUserEmail;
 
@@ -821,10 +893,24 @@ function appendMessage(senderEmail, message, timestamp) {
         div.classList.add("sent");
     }
 
+    // Thêm data attribute cho message ID nếu có
+    if (messageId) {
+        div.dataset.messageId = messageId;
+        div.dataset.sender = senderEmail;
+        div.dataset.isGroup = currentChatType === "group" ? "true" : "false";
+    }
+
     let localTimestamp = timestamp;
     if (typeof timestamp === "number") {
         localTimestamp = new Date(timestamp).toLocaleTimeString();
     }
+
+    let messageContent = `
+        <div class="message-content">
+            <p>${message}</p>
+            <span class="timestamp">${localTimestamp}</span>
+        </div>
+    `;
 
     const senderName = senderEmail.split("@")[0];
     if (!isSentByMe) {
@@ -833,30 +919,61 @@ function appendMessage(senderEmail, message, timestamp) {
                 <img class="avatar" src="/img/user_ava.svg" alt="Avatar">
                 <span class="sender-name">${senderName}</span>
             </div>
-            <div class="message-content">
-                <p>${message}</p>
-                <span class="timestamp">${localTimestamp}</span>
-            </div>
+            ${messageContent}
         `;
     } else {
-        div.innerHTML = `
-            <div class="message-content">
-                <p>${message}</p>
-                <span class="timestamp">${localTimestamp}</span>
-            </div>
-        `;
+        div.innerHTML = messageContent;
+
+        // Thêm trạng thái tin nhắn nếu là tin nhắn của người dùng hiện tại
+        if (messageId) {
+            const statusContainer = document.createElement("div");
+            statusContainer.className = "message-status-container";
+
+            // Sử dụng status nếu được cung cấp, nếu không thì mặc định là 0 (Đã gửi)
+            const messageStatus = typeof status !== 'undefined' ? status : 0;
+
+            // Tạo HTML cho chỉ báo trạng thái
+            const statusHTML = `
+                <span class="message-status" 
+                    data-message-id="${messageId}" 
+                    data-status="${messageStatus}" 
+                    title="${messageStatus === 0 ? 'Đã gửi' : (messageStatus === 1 ? 'Đã nhận' : 'Đã đọc')}">
+                    ${StatusIconsMap[messageStatus] || StatusIconsMap[0]}
+                </span>
+            `;
+
+            statusContainer.innerHTML = statusHTML;
+            div.appendChild(statusContainer);
+        }
     }
     chatContent.appendChild(div);
     chatContent.scrollTop = chatContent.scrollHeight;
+
+    // Đánh dấu tin nhắn người khác là đã đọc khi hiển thị
+    if (messageId && !isSentByMe) {
+        // Sử dụng hàm markMessageAsRead nếu đã được định nghĩa
+        if (typeof markMessageAsRead === 'function') {
+            markMessageAsRead(messageId, currentChatType === "group");
+        } else {
+            console.log("Function markMessageAsRead not defined");
+        }
+    }
 }
 
-function appendMessageWithAttachments(senderEmail, message, timestamp, attachments) {
+function appendMessageWithAttachments(senderEmail, message, timestamp, attachments, messageId) {
     const div = document.createElement("div");
     const isSentByMe = senderEmail === currentUserEmail;
 
     div.classList.add("message");
     if (isSentByMe) {
         div.classList.add("sent");
+    }
+
+    // Thêm data attribute cho message ID nếu có
+    if (messageId) {
+        div.dataset.messageId = messageId;
+        div.dataset.sender = senderEmail;
+        div.dataset.isGroup = currentChatType === "group" ? "true" : "false";
     }
 
     let localTimestamp = timestamp;
@@ -916,29 +1033,55 @@ function appendMessageWithAttachments(senderEmail, message, timestamp, attachmen
         attachmentsHtml += '</div>';
     }
 
+    let messageContent = `
+        <div class="message-content">
+            <p>${message}</p>
+            ${attachmentsHtml}
+            <span class="timestamp">${localTimestamp}</span>
+        </div>
+    `;
+
     if (!isSentByMe) {
         div.innerHTML = `
             <div class="sender-info">
                 <img class="avatar" src="/img/user_ava.svg" alt="Avatar">
                 <span class="sender-name">${senderName}</span>
             </div>
-            <div class="message-content">
-                <p>${message}</p>
-                ${attachmentsHtml}
-                <span class="timestamp">${localTimestamp}</span>
-            </div>
+            ${messageContent}
         `;
     } else {
-        div.innerHTML = `
-            <div class="message-content">
-                <p>${message}</p>
-                ${attachmentsHtml}
-                <span class="timestamp">${localTimestamp}</span>
-            </div>
-        `;
+        div.innerHTML = messageContent;
+        // Thêm trạng thái tin nhắn nếu là tin nhắn của người dùng hiện tại
+        if (messageId) {
+            const statusContainer = document.createElement("div");
+            statusContainer.className = "message-status-container";
+
+            // Sử dụng status nếu được cung cấp, nếu không thì mặc định là 0 (Đã gửi)
+            const messageStatus = typeof status !== 'undefined' ? status : 0;
+
+            // Tạo HTML cho chỉ báo trạng thái trực tiếp, không dùng hàm bên ngoài
+            const statusHTML = `
+                <span class="message-status" 
+                    data-message-id="${messageId}" 
+                    data-status="${messageStatus}" 
+                    title="${messageStatus === 0 ? 'Đã gửi' : (messageStatus === 1 ? 'Đã nhận' : 'Đã đọc')}">
+                    ${StatusIconsMap[messageStatus] || StatusIconsMap[0]}
+                </span>
+            `;
+
+            statusContainer.innerHTML = statusHTML;
+            div.appendChild(statusContainer);
+        }
     }
     chatContent.appendChild(div);
     chatContent.scrollTop = chatContent.scrollHeight;
+
+    // Đánh dấu tin nhắn người khác là đã đọc khi hiển thị
+    if (messageId && !isSentByMe) {
+        if (typeof markMessageAsRead === 'function') {
+            markMessageAsRead(messageId, currentChatType === "group");
+        }
+    }
 }
 
 function showNotification(senderEmail, message) {
@@ -1229,6 +1372,75 @@ function unfriend(friendId) {
             toastr.error('Đã xảy ra lỗi khi hủy kết bạn');
         }
     });
+}
+
+const MessageStatusEnum = {
+    Sent: 0,
+    Delivered: 1,
+    Read: 2
+};
+
+// Định nghĩa icon cho các trạng thái
+const StatusIconsMap = {
+    0: '<i class="fas fa-check text-secondary"></i>',       // Đã gửi
+    1: '<i class="fas fa-check-double text-secondary"></i>', // Đã nhận
+    2: '<i class="fas fa-check-double text-primary"></i>'    // Đã đọc
+};
+
+// Hàm tiện ích tạo phần tử trạng thái tin nhắn
+function createStatusElement(messageId, status) {
+    if (!messageId) return '';
+
+    status = parseInt(status || 0);
+    const statusTitle = status === 0 ? 'Đã gửi' : (status === 1 ? 'Đã nhận' : 'Đã đọc');
+    const statusIcon = StatusIconsMap[status] || StatusIconsMap[0];
+
+    return `<span class="message-status" 
+                 data-message-id="${messageId}" 
+                 data-status="${status}" 
+                 title="${statusTitle}">
+                ${statusIcon}
+            </span>`;
+}
+
+// Cập nhật trạng thái tin nhắn
+function updateMessageStatusUI(messageId, status) {
+    if (!messageId) return;
+
+    const statusElement = document.querySelector(`.message-status[data-message-id="${messageId}"]`);
+    if (statusElement) {
+        status = parseInt(status || 0);
+        const statusTitle = status === 0 ? 'Đã gửi' : (status === 1 ? 'Đã nhận' : 'Đã đọc');
+        const statusIcon = StatusIconsMap[status] || StatusIconsMap[0];
+
+        statusElement.innerHTML = statusIcon;
+        statusElement.setAttribute('data-status', status);
+        statusElement.setAttribute('title', statusTitle);
+    }
+}
+
+// Đánh dấu tin nhắn là đã đọc
+function markMessageAsRead(messageId, isGroupMessage = false) {
+    if (!messageId) return;
+
+    if (isGroupMessage) {
+        connection.invoke("MarkGroupMessageAsRead", messageId)
+            .catch(err => console.error(`Error marking group message as read: ${err.toString()}`));
+    } else {
+        connection.invoke("MarkMessageAsRead", messageId)
+            .catch(err => console.error(`Error marking message as read: ${err.toString()}`));
+    }
+}
+
+// Đánh dấu tất cả tin nhắn là đã đọc
+function markAllMessagesAsRead(contactEmail = null, groupId = null) {
+    if (contactEmail) {
+        connection.invoke("MarkAllMessagesAsRead", contactEmail)
+            .catch(err => console.error(`Error marking messages as read: ${err.toString()}`));
+    } else if (groupId) {
+        connection.invoke("MarkAllGroupMessagesAsRead", groupId)
+            .catch(err => console.error(`Error marking group messages as read: ${err.toString()}`));
+    }
 }
 
 init();
