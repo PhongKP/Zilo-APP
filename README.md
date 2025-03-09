@@ -1,1 +1,1 @@
-This is an web created based Zalo and Facebook made with ASP DOT NET MVC
+This is an web created based Zalo and Facebook made with ASP .NET MVC
