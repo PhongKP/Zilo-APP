@@ -153,10 +153,7 @@ function setupSignalREvents() {
             } else if (senderEmail === receiverEmail) {
                 console.log("Displaying message from other");
                 appendMessage(senderEmail, message, timestamp);
-                // Đánh dấu tin nhắn là đã đọc vì nó đang hiển thị
-                if (typeof markMessageAsRead === 'function') {
-                    markMessageAsRead(messageId, false);
-                }
+                markMessageAsRead(messageId, false);
             } else {
                 console.log("Showing notification - senderEmail:", senderEmail);
                 const senderName = senderEmail.split("@")[0];
@@ -181,10 +178,7 @@ function setupSignalREvents() {
             } else if (senderEmail === receiverEmail) {
                 console.log("Displaying message with file from other");
                 appendMessageWithAttachments(senderEmail, message, timestamp, attachments);
-                // Đánh dấu tin nhắn là đã đọc vì nó đang hiển thị
-                if (typeof markMessageAsRead === 'function') {
-                    markMessageAsRead(messageId, false);
-                }
+                markMessageAsRead(messageId, false);
             } else {
                 console.log("Showing notification - senderEmail:", senderEmail);
                 const senderName = senderEmail.split("@")[0];
@@ -205,7 +199,7 @@ function setupSignalREvents() {
             // We're currently viewing this group, append message
             appendMessage(senderEmail, message, timestamp);
             // Nếu không phải tin nhắn của mình, đánh dấu là đã đọc
-            if (senderEmail !== currentUserEmail && typeof markMessageAsRead === 'function') {
+            if (senderEmail !== currentUserEmai) {
                 markMessageAsRead(messageId, true);
             }
         } else {
@@ -224,7 +218,7 @@ function setupSignalREvents() {
             // We're currently viewing this group, append message with file
             appendMessageWithAttachments(senderEmail, message, timestamp, attachments);
             // Nếu không phải tin nhắn của mình, đánh dấu là đã đọc
-            if (senderEmail !== currentUserEmail && typeof markMessageAsRead === 'function') {
+            if (senderEmail !== currentUserEmail) {
                 markMessageAsRead(messageId, true);
             }
         } else {
@@ -624,11 +618,8 @@ async function loadGroupMessages(groupId) {
             }
         });
 
-        // Thiết lập observer để đánh dấu tin nhắn là đã đọc khi hiển thị
-        document.querySelectorAll('.group-message[data-message-id]').forEach(el => {
-            if (window.observeNewMessage) {
-                window.observeNewMessage(el);
-            }
+        document.querySelectorAll('.message.sent').forEach(messageElement => {
+            addMessageStatus(messageElement);
         });
 
         // Scroll to bottom
@@ -653,10 +644,8 @@ async function loadMessages(receiverId) {
                 appendMessage(msg.senderEmail, msg.content, msg.timestamp, msg.id);
             }
         });
-        document.querySelectorAll('.message[data-message-id]').forEach(el => {
-            if (window.observeNewMessage) {
-                window.observeNewMessage(el);
-            }
+        document.querySelectorAll('.message.sent').forEach(messageElement => {
+            addMessageStatus(messageElement);
         });
 
         // Scroll to bottom
@@ -673,7 +662,6 @@ async function sendMessage() {
     try {
         if (currentChatType === "contact" && currentReceiverId) {
             if (selectedFiles.length > 0) {
-                // Send message with file
                 await sendMessageWithFile(currentReceiverId, content);
             } else {
                 // Send direct message
@@ -893,13 +881,6 @@ function appendMessage(senderEmail, message, timestamp, messageId) {
         div.classList.add("sent");
     }
 
-    // Thêm data attribute cho message ID nếu có
-    if (messageId) {
-        div.dataset.messageId = messageId;
-        div.dataset.sender = senderEmail;
-        div.dataset.isGroup = currentChatType === "group" ? "true" : "false";
-    }
-
     let localTimestamp = timestamp;
     if (typeof timestamp === "number") {
         localTimestamp = new Date(timestamp).toLocaleTimeString();
@@ -923,57 +904,74 @@ function appendMessage(senderEmail, message, timestamp, messageId) {
         `;
     } else {
         div.innerHTML = messageContent;
-
-        // Thêm trạng thái tin nhắn nếu là tin nhắn của người dùng hiện tại
-        if (messageId) {
-            const statusContainer = document.createElement("div");
-            statusContainer.className = "message-status-container";
-
-            // Sử dụng status nếu được cung cấp, nếu không thì mặc định là 0 (Đã gửi)
-            const messageStatus = typeof status !== 'undefined' ? status : 0;
-
-            // Tạo HTML cho chỉ báo trạng thái
-            const statusHTML = `
-                <span class="message-status" 
-                    data-message-id="${messageId}" 
-                    data-status="${messageStatus}" 
-                    title="${messageStatus === 0 ? 'Đã gửi' : (messageStatus === 1 ? 'Đã nhận' : 'Đã đọc')}">
-                    ${StatusIconsMap[messageStatus] || StatusIconsMap[0]}
-                </span>
-            `;
-
-            statusContainer.innerHTML = statusHTML;
-            div.appendChild(statusContainer);
-        }
     }
     chatContent.appendChild(div);
     chatContent.scrollTop = chatContent.scrollHeight;
-
-    // Đánh dấu tin nhắn người khác là đã đọc khi hiển thị
-    if (messageId && !isSentByMe) {
-        // Sử dụng hàm markMessageAsRead nếu đã được định nghĩa
-        if (typeof markMessageAsRead === 'function') {
-            markMessageAsRead(messageId, currentChatType === "group");
-        } else {
-            console.log("Function markMessageAsRead not defined");
-        }
-    }
 }
 
-function appendMessageWithAttachments(senderEmail, message, timestamp, attachments, messageId) {
+function simulateMessageStatusUpdates(messageElement) {
+    if (!messageElement) return;
+
+    const messageId = messageElement.dataset.messageId;
+    if (!messageId) return;
+
+    // Sau 2 giây, cập nhật trạng thái thành "Đã nhận"
+    setTimeout(() => {
+        updateMessageStatusUI(messageId, 1);
+
+        // Sau thêm 3 giây nữa, cập nhật thành "Đã đọc"
+        setTimeout(() => {
+            updateMessageStatusUI(messageId, 2);
+        }, 3000);
+    }, 2000);
+}
+
+// Hàm thêm trạng thái tin nhắn vào một phần tử tin nhắn đã hiển thị
+function addMessageStatus(messageElement, status = 0) {
+    if (!messageElement) return;
+
+    // Chỉ thêm trạng thái cho tin nhắn của người dùng hiện tại
+    if (!messageElement.classList.contains('sent')) return;
+
+    // Tạo hoặc tìm ID cho tin nhắn
+    let messageId = messageElement.dataset.messageId;
+    if (!messageId) {
+        messageId = 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+        messageElement.dataset.messageId = messageId;
+    }
+
+    // Kiểm tra xem đã có container status chưa
+    let statusContainer = messageElement.querySelector('.message-status-container');
+
+    if (!statusContainer) {
+        statusContainer = document.createElement('div');
+        statusContainer.className = 'message-status-container';
+        messageElement.appendChild(statusContainer);
+    }
+
+    // Tạo HTML cho trạng thái tin nhắn
+    const statusTitle = status === 0 ? 'Đã gửi' : (status === 1 ? 'Đã nhận' : 'Đã đọc');
+    const statusIcon = StatusIconsMap[status] || StatusIconsMap[0];
+
+    statusContainer.innerHTML = `
+        <span class="message-status" 
+            data-message-id="${messageId}" 
+            data-status="${status}" 
+            title="${statusTitle}">
+            ${statusIcon}
+        </span>
+    `;
+
+    return messageId;
+}
+
+function appendMessageWithAttachments(senderEmail, message, timestamp, attachments) {
     const div = document.createElement("div");
     const isSentByMe = senderEmail === currentUserEmail;
 
     div.classList.add("message");
     if (isSentByMe) {
         div.classList.add("sent");
-    }
-
-    // Thêm data attribute cho message ID nếu có
-    if (messageId) {
-        div.dataset.messageId = messageId;
-        div.dataset.sender = senderEmail;
-        div.dataset.isGroup = currentChatType === "group" ? "true" : "false";
     }
 
     let localTimestamp = timestamp;
@@ -1051,37 +1049,9 @@ function appendMessageWithAttachments(senderEmail, message, timestamp, attachmen
         `;
     } else {
         div.innerHTML = messageContent;
-        // Thêm trạng thái tin nhắn nếu là tin nhắn của người dùng hiện tại
-        if (messageId) {
-            const statusContainer = document.createElement("div");
-            statusContainer.className = "message-status-container";
-
-            // Sử dụng status nếu được cung cấp, nếu không thì mặc định là 0 (Đã gửi)
-            const messageStatus = typeof status !== 'undefined' ? status : 0;
-
-            // Tạo HTML cho chỉ báo trạng thái trực tiếp, không dùng hàm bên ngoài
-            const statusHTML = `
-                <span class="message-status" 
-                    data-message-id="${messageId}" 
-                    data-status="${messageStatus}" 
-                    title="${messageStatus === 0 ? 'Đã gửi' : (messageStatus === 1 ? 'Đã nhận' : 'Đã đọc')}">
-                    ${StatusIconsMap[messageStatus] || StatusIconsMap[0]}
-                </span>
-            `;
-
-            statusContainer.innerHTML = statusHTML;
-            div.appendChild(statusContainer);
-        }
     }
     chatContent.appendChild(div);
     chatContent.scrollTop = chatContent.scrollHeight;
-
-    // Đánh dấu tin nhắn người khác là đã đọc khi hiển thị
-    if (messageId && !isSentByMe) {
-        if (typeof markMessageAsRead === 'function') {
-            markMessageAsRead(messageId, currentChatType === "group");
-        }
-    }
 }
 
 function showNotification(senderEmail, message) {
@@ -1387,22 +1357,6 @@ const StatusIconsMap = {
     2: '<i class="fas fa-check-double text-primary"></i>'    // Đã đọc
 };
 
-// Hàm tiện ích tạo phần tử trạng thái tin nhắn
-function createStatusElement(messageId, status) {
-    if (!messageId) return '';
-
-    status = parseInt(status || 0);
-    const statusTitle = status === 0 ? 'Đã gửi' : (status === 1 ? 'Đã nhận' : 'Đã đọc');
-    const statusIcon = StatusIconsMap[status] || StatusIconsMap[0];
-
-    return `<span class="message-status" 
-                 data-message-id="${messageId}" 
-                 data-status="${status}" 
-                 title="${statusTitle}">
-                ${statusIcon}
-            </span>`;
-}
-
 // Cập nhật trạng thái tin nhắn
 function updateMessageStatusUI(messageId, status) {
     if (!messageId) return;
@@ -1413,9 +1367,18 @@ function updateMessageStatusUI(messageId, status) {
         const statusTitle = status === 0 ? 'Đã gửi' : (status === 1 ? 'Đã nhận' : 'Đã đọc');
         const statusIcon = StatusIconsMap[status] || StatusIconsMap[0];
 
+        // Thêm class để kích hoạt hiệu ứng
+        statusElement.classList.add('status-updating');
+
+        // Cập nhật nội dung và thuộc tính
         statusElement.innerHTML = statusIcon;
         statusElement.setAttribute('data-status', status);
         statusElement.setAttribute('title', statusTitle);
+
+        // Xóa class hiệu ứng sau khi hoàn thành
+        setTimeout(() => {
+            statusElement.classList.remove('status-updating');
+        }, 300);
     }
 }
 

@@ -282,11 +282,11 @@ namespace AuthenticationAppMVC.Services.Impl
         {
             try
             {
-                var existingFriendRequest = await _dbcontext.FriendRequests.FirstOrDefaultAsync(
-                    f => (f.SenderId == senderId && f.ReceiverId == receiverId) ||
-                         (f.SenderId == receiverId && f.ReceiverId == senderId));
+                var existingFriendShip = await _dbcontext.FriendShips.FirstOrDefaultAsync(
+                    f => f.User1Id == senderId && f.User2Id == receiverId ||
+                         f.User1Id == receiverId && f.User2Id == senderId);
 
-                if (existingFriendRequest != null)
+                if (existingFriendShip != null)
                 {
                     return false;
                 }

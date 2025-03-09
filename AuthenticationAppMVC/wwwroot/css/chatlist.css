@@ -1165,6 +1165,186 @@
     animation: toast-progress 5s linear forwards;
 }
 
+/* Message status styling - Enhanced version */
+.message-status-container {
+    display: flex;
+    justify-content: flex-end;
+    margin: 2px 0 0 0;
+    padding-right: 6px;
+}
+
+/* Message status indicator styling */
+.message-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 4px;
+    cursor: help;
+    position: relative;
+    font-size: 0.65rem;
+    line-height: 1;
+    transition: all 0.2s ease;
+}
+
+    /* Icon size and styling */
+    .message-status [class*="fa-check"] {
+        font-size: 0.7em;
+        margin-right: 2px;
+        transition: all 0.3s ease;
+    }
+
+    /* Status-specific styling */
+    .message-status[data-status="0"] [class*="fa-check"] {
+        opacity: 0.75;
+        color: #6c757d;
+    }
+
+    .message-status[data-status="1"] [class*="fa-check-double"] {
+        opacity: 0.85;
+        color: #6c757d;
+    }
+
+    .message-status[data-status="2"] [class*="fa-check-double"] {
+        color: #0d6efd;
+        opacity: 1;
+        transform: scale(1.1);
+    }
+
+    /* Hover effect for better interaction */
+    .message-status:hover [class*="fa-check"] {
+        opacity: 1;
+    }
+
+/* Position status indicators for different message types */
+.message.sent .message-status-container {
+    margin-right: 4px;
+}
+
+.message:not(.sent) .message-status-container {
+    display: none; /* Only show status for outgoing messages */
+}
+
+/* Custom tooltip styling */
+.message-status {
+    --tooltip-bg: #343a40;
+    --tooltip-color: #fff;
+    --tooltip-arrow-size: 6px;
+}
+
+    .message-status[title]:hover::before {
+        content: attr(title);
+        position: absolute;
+        bottom: calc(100% + var(--tooltip-arrow-size));
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: var(--tooltip-bg);
+        color: var(--tooltip-color);
+        text-align: center;
+        border-radius: 4px;
+        padding: 4px 8px;
+        z-index: 1000;
+        font-size: 0.75rem;
+        font-weight: 400;
+        white-space: nowrap;
+        pointer-events: none;
+        opacity: 0.95;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        animation: fadeIn 0.2s ease;
+    }
+
+    /* Arrow for tooltip */
+    .message-status[title]:hover::after {
+        content: '';
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border: var(--tooltip-arrow-size) solid transparent;
+        border-top-color: var(--tooltip-bg);
+        pointer-events: none;
+        animation: fadeIn 0.2s ease;
+    }
+
+/* Animation for tooltip */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(5px);
+    }
+
+    to {
+        opacity: 0.95;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+@keyframes statusPulse {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.2);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+.status-updating {
+    animation: statusPulse 0.3s ease;
+}
+
+/* Responsive design adjustments */
+@media (max-width: 576px) {
+    .message-status-container {
+        padding-right: 2px;
+    }
+
+    .message-status {
+        padding: 0 2px;
+    }
+
+        .message-status [class*="fa-check"] {
+            font-size: 0.65em;
+        }
+}
+
+/* Dark mode support if your app has it */
+@media (prefers-color-scheme: dark) {
+    .message-status {
+        --tooltip-bg: #212529;
+        --tooltip-color: #f8f9fa;
+    }
+
+        .message-status[data-status="0"] [class*="fa-check"] {
+            color: #adb5bd;
+        }
+
+        .message-status[data-status="1"] [class*="fa-check-double"] {
+            color: #adb5bd;
+        }
+
+        .message-status[data-status="2"] [class*="fa-check-double"] {
+            color: #0d6efd;
+        }
+}
+
+/* Smooth transition between statuses */
+.message-status-container .message-status {
+    transition: transform 0.2s ease;
+}
+
+    .message-status-container .message-status[data-status="2"] {
+        transform: translateY(-1px);
+    }
+
+/* Optional: Add styles for timestamp alignment with status */
+.message.sent .timestamp {
+    margin-right: 4px;
+    display: inline-block;
+}
+
 @keyframes toast-progress {
     from {
         width: 100%;
