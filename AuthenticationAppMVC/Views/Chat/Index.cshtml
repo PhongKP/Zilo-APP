@@ -35,6 +35,17 @@
             <!-- Panel danh sách liên hệ -->
             <div class="panel" id="panel-contacts">
                 <div class="contact-list" id="list-contact">
+                    <!-- Thêm mục Cloud của tôi làm mục đầu tiên -->
+                    <div class="contact cloud-storage" data-is-cloud="true">
+                        <div class="contact-avatar">
+                            <i class="bi bi-cloud-fill"></i>
+                        </div>
+                        <div class="contact-info">
+                            <span class="contact-name-cloud">Cloud của tôi</span>
+                            @* <small class="contact-status">Kho lưu trữ cá nhân</small> *@
+                        </div>
+                    </div>
+
                     @foreach (var user in Model)
                     {
                         <div class="contact" data-user-id="@user.Id" data-email="@user.Email">

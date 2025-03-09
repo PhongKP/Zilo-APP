@@ -1,0 +1,53 @@
+﻿@model List<User>
+
+<!-- Thêm nút "Cloud của tôi" vào đầu danh sách liên hệ -->
+@if (ViewBag.ShowCloudStorage == true)
+{
+    <div class="contact-item @(ViewBag.IsCloud == true ? "active" : "")" id="cloud-contact">
+        <a asp-controller="Chat" asp-action="Cloud" class="d-flex align-items-center p-2 text-decoration-none">
+            <div class="avatar-wrapper me-2">
+                <div class="avatar bg-primary text-white d-flex align-items-center justify-content-center">
+                    <i class="bi bi-cloud-fill"></i>
+                </div>
+            </div>
+            <div class="contact-info">
+                <h6 class="mb-0">Cloud của tôi</h6>
+                <small class="text-muted">Kho lưu trữ cá nhân</small>
+            </div>
+        </a>
+    </div>
+    <hr class="my-2">
+}
+
+<!-- Phần hiển thị danh sách liên hệ hiện có -->
+@foreach (var user in Model)
+{
+    <div class="contact-item" data-user-id="@user.Id">
+        <a href="#" class="load-chat d-flex align-items-center p-2 text-decoration-none" data-user-id="@user.Id">
+            @* <div class="avatar-wrapper me-2"> *@
+            @*     @if (string.IsNullOrEmpty(user.Avatar)) *@
+            @*     { *@
+            @*         <div class="avatar"> *@
+            @*             @user.Name?.Substring(0, 1).ToUpper() *@
+            @*         </div> *@
+            @*     } *@
+            @*     else *@
+            @*     { *@
+            @*         <div class="avatar"> *@
+            @*             <img src="@user.Avatar" alt="@user.Name" class="rounded-circle" /> *@
+            @*         </div> *@
+            @*     } *@
+            @* </div> *@
+            <div class="contact-info">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">@user.UserName</h6>
+                    <div class="unread-badge d-none">0</div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted message-preview"></small>
+                    <small class="text-muted message-time"></small>
+                </div>
+            </div>
+        </a>
+    </div>
+}

@@ -3,6 +3,7 @@ using AuthenticationAppMVC.Hubs;
 using AuthenticationAppMVC.Models;
 using AuthenticationAppMVC.Services;
 using AuthenticationAppMVC.Services.Impl;
+using CloudinaryDotNet;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -45,8 +46,21 @@ namespace AuthenticationAppMVC
                                       .SetIsOriginAllowed(_ => true));
             });
 
+            var cloudinarySettings = builder.Configuration.GetSection("Cloudinary");
+            var cloudName = cloudinarySettings["CloudName"];
+            var apiKey = cloudinarySettings["ApiKey"];
+            var apiSecret = cloudinarySettings["ApiSecret"];
+
+            if (string.IsNullOrEmpty(cloudName) || string.IsNullOrEmpty(apiKey) || string.IsNullOrEmpty(apiSecret))
+            {
+                throw new Exception("Cloudinary settings are missing in configuration.");
+            }
+
+            builder.Services.AddSingleton(new Cloudinary(new Account(cloudName, apiKey, apiSecret)));
+
             builder.Services.AddScoped<FileService>();
             builder.Services.AddScoped<IFriendsService, FriendsServiceImpl>();
+            builder.Services.AddScoped<ICloudService, CloudServiceImpl>();
 
             builder.Services.AddSignalR();
 

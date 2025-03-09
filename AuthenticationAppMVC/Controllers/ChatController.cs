@@ -19,17 +19,24 @@ namespace AuthenticationAppMVC.Controllers
         private readonly UserManager<User> userManager;
         private readonly IHubContext<Chathub> hubContext;
         private readonly FileService fileService;
+        private readonly ILogger<ChatController> logger;
+        private readonly ICloudService cloudService;
 
         public ChatController(
             AppDBContext appDBContext,
             UserManager<User> userManager,
             IHubContext<Chathub> hubContext,
-            FileService fileService)
+            FileService fileService,
+            ILogger<ChatController> logger,
+            ICloudService cloudService
+        )
         {
             _dbContext = appDBContext;
             this.userManager = userManager;
             this.hubContext = hubContext;
             this.fileService = fileService;
+            this.logger = logger;
+            this.cloudService = cloudService;
         }
 
         public async Task<IActionResult> Index()
@@ -39,6 +46,7 @@ namespace AuthenticationAppMVC.Controllers
 
             var users = await _dbContext.Users.Where(u => u.Id != currentUser.Id).ToListAsync();
             ViewData["HideFooter"] = true;
+            ViewBag.ShowCloudStorage = true;
             return View(users);
         }
 
@@ -132,6 +140,195 @@ namespace AuthenticationAppMVC.Controllers
             }
 
             return Json(result);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Cloud()
+        {
+            var currentUser = await userManager.GetUserAsync(User);
+            if (currentUser == null) return Unauthorized();
+
+            try
+            {
+                // Đảm bảo người dùng có bản ghi dung lượng lưu trữ
+                await cloudService.EnsureUserStorageExistsAsync(currentUser.Id);
+
+                // Lấy danh sách tin nhắn cloud storage của người dùng
+                var cloudMessages = await cloudService.GetUserCloudMessagesAsync(currentUser.Id);
+
+                // Lấy thông tin về dung lượng lưu trữ
+                var storageInfo = await cloudService.GetUserStorageInfoAsync(currentUser.Id);
+
+                // Tính phần trăm dung lượng đã sử dụng
+                double usedPercentage = (double)storageInfo.StorageUsed / storageInfo.StorageLimit * 100;
+
+                // Chuyển đổi bytes sang đơn vị dễ đọc
+                ViewBag.UsedStorage = FormatFileSize(storageInfo.StorageUsed);
+                ViewBag.TotalStorage = FormatFileSize(storageInfo.StorageLimit);
+                ViewBag.UsedPercentage = usedPercentage;
+                ViewBag.CloudMessages = cloudMessages;
+                ViewBag.IsCloud = true;
+
+                // Hiển thị view Chat với flag IsCloudStorage = true
+                var model = new ChatViewModel
+                {
+                    ContactId = null,
+                    Messages = new List<Message>(),
+                    IsCloudStorage = true
+                };
+
+                return View("Chat", model);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Lỗi khi hiển thị Cloud Storage");
+                TempData["ErrorMessage"] = "Đã xảy ra lỗi khi tải dữ liệu Cloud Storage. Vui lòng thử lại sau.";
+                return RedirectToAction("Index");
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UploadToCloud([FromForm] string content, List<IFormFile> files)
+        {
+            var currentUser = await userManager.GetUserAsync(User);
+            if (currentUser == null) return Unauthorized();
+
+            if (files == null || !files.Any())
+            {
+                return Json(new { success = false, message = "Vui lòng chọn ít nhất một file." });
+            }
+
+            try
+            {
+                // Kiểm tra dung lượng của tất cả file
+                long totalSize = files.Sum(f => f.Length);
+                if (!await cloudService.HasEnoughStorageAsync(currentUser.Id, totalSize))
+                {
+                    return Json(new
+                    {
+                        success = false,
+                        message = "Không đủ dung lượng lưu trữ. Vui lòng xóa bớt file hoặc nâng cấp gói lưu trữ."
+                    });
+                }
+
+                // Lưu các file lên cloud
+                var cloudMessage = await cloudService.SaveMultipleToCloudAsync(currentUser.Id, content, files);
+
+                return Json(new
+                {
+                    success = true,
+                    message = "Tải file lên thành công!",
+                    cloudMessage = new
+                    {
+                        id = cloudMessage.Id,
+                        content = cloudMessage.Content,
+                        createdAt = cloudMessage.CreatedAt,
+                        attachments = cloudMessage.Attachments.Select(a => new {
+                            id = a.Id,
+                            fileName = a.FileName,
+                            contentType = a.ContentType,
+                            fileSize = a.FileSize,
+                            storagePath = a.StoragePath
+                        }).ToList()
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Lỗi khi tải file lên cloud");
+                return Json(new
+                {
+                    success = false,
+                    message = "Đã xảy ra lỗi khi tải file lên. Vui lòng thử lại sau."
+                });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> DeleteCloudMessage(string messageId)
+        {
+            var currentUser = await userManager.GetUserAsync(User);
+            if (currentUser == null) return Unauthorized();
+
+            try
+            {
+                await cloudService.DeleteCloudMessageAsync(messageId, currentUser.Id);
+                return Json(new { success = true, message = "Xóa file thành công!" });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, $"Lỗi khi xóa tin nhắn cloud {messageId}");
+                return Json(new
+                {
+                    success = false,
+                    message = "Đã xảy ra lỗi khi xóa file. Vui lòng thử lại sau."
+                });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetCloudStorageData()
+        {
+            var currentUser = await userManager.GetUserAsync(User);
+            if (currentUser == null) return Unauthorized();
+
+            try
+            {
+                // Lấy danh sách tin nhắn cloud storage của người dùng
+                var cloudMessages = await cloudService.GetUserCloudMessagesAsync(currentUser.Id);
+
+                // Lấy thông tin về dung lượng lưu trữ
+                var storageInfo = await cloudService.GetUserStorageInfoAsync(currentUser.Id);
+
+                // Tính phần trăm dung lượng đã sử dụng
+                double usedPercentage = (double)storageInfo.StorageUsed / storageInfo.StorageLimit * 100;
+
+                return Json(new
+                {
+                    success = true,
+                    messages = cloudMessages.Select(m => new {
+                        id = m.Id,
+                        content = m.Content,
+                        createdAt = m.CreatedAt,
+                        hasAttachment = m.HasAttachment,
+                        attachments = m.Attachments.Select(a => new {
+                            id = a.Id,
+                            fileName = a.FileName,
+                            contentType = a.ContentType,
+                            fileSize = a.FileSize,
+                            storagePath = a.StoragePath
+                        }).ToList()
+                    }).ToList(),
+                    storageInfo = new
+                    {
+                        used = storageInfo.StorageUsed,
+                        limit = storageInfo.StorageLimit,
+                        usedFormatted = FormatFileSize(storageInfo.StorageUsed),
+                        limitFormatted = FormatFileSize(storageInfo.StorageLimit),
+                        percentage = usedPercentage
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Lỗi khi lấy dữ liệu Cloud Storage");
+                return Json(new { success = false, message = "Đã xảy ra lỗi khi tải dữ liệu Cloud Storage." });
+            }
+        }
+
+        private string FormatFileSize(long bytes)
+        {
+            string[] suffixes = { "B", "KB", "MB", "GB", "TB", "PB" };
+            int counter = 0;
+            decimal number = bytes;
+
+            while (Math.Round(number / 1024) >= 1)
+            {
+                number = number / 1024;
+                counter++;
+            }
+
+            return $"{number:n2} {suffixes[counter]}";
         }
 
         [HttpGet]

@@ -449,7 +449,7 @@ function selectContact(contactElement) {
     contactElement.classList.add("active");
 
     // Update state
-    selectedContact = contactElement.getAttribute("data-email");
+    selectedContact = contactElement.getAttribute("data-is-cloud") === "true" ? "Cloud của tôi@gmail.com" : contactElement.getAttribute("data-email");
     currentReceiverId = contactElement.getAttribute("data-user-id");
     currentChatType = "contact";
     currentGroupId = "";

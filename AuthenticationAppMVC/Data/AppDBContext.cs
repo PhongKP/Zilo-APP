@@ -26,6 +26,10 @@ namespace AuthenticationAppMVC.Data
 
         public DbSet<GroupMessageReadStatus> GroupMessageReadStatuses { get; set; }
 
+        public DbSet<CloudMessage> CloudMessages { get; set; }
+        public DbSet<CloudAttachment> CloudAttachments { get; set; }
+        public DbSet<UserStorage> UserStorages { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -125,6 +129,28 @@ namespace AuthenticationAppMVC.Data
             builder.Entity<FriendShip>()
                 .HasIndex(f => new { f.User1Id, f.User2Id })
                 .IsUnique();
+
+
+            // Cấu hình quan hệ giữa CloudMessage và CloudAttachment
+            builder.Entity<CloudMessage>()
+                .HasMany(cm => cm.Attachments)
+                .WithOne(ca => ca.CloudMessage)
+                .HasForeignKey(ca => ca.CloudMessageId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Cấu hình quan hệ giữa UserStorage và CloudMessage
+            builder.Entity<CloudMessage>()
+                .HasOne(m => m.User)
+                .WithMany()
+                .HasForeignKey(m => m.UserId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // Cấu hình quan hệ giữa UserStorage và CloudAttachment
+            builder.Entity<UserStorage>()
+                .HasOne(us => us.User)
+                .WithOne()
+                .HasForeignKey<UserStorage>(us => us.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }
