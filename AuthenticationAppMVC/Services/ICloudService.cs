@@ -71,5 +71,13 @@ namespace AuthenticationAppMVC.Services
         /// <param name="userId">ID của người dùng</param>
         /// <returns>CloudMessage với các Attachment</returns>
         Task<CloudMessage> GetCloudMessageDetailsAsync(string messageId, string userId);
+
+        /// <summary>
+        /// Lưu một tin nhắn lên cloud
+        /// </summary>
+        /// <param name="userId">ID của người dùng</param>
+        /// <param name="content">Nội dung tin nhắn</param>
+        /// <returns>CloudMessage đã được tạo</returns>
+        Task<CloudMessage> SaveTextToCloudAsync(string userId, string content);
     }
 }

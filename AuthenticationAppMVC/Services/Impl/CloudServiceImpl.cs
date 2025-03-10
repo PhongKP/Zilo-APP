@@ -121,7 +121,7 @@ namespace AuthenticationAppMVC.Services.Impl
                     .AsNoTracking()
                     .Include(m => m.Attachments)
                     .Where(m => m.UserId == userId)
-                    .OrderByDescending(m => m.CreatedAt)
+                    .OrderBy(m => m.CreatedAt)
                     .ToListAsync();
             }
             catch (Exception ex)
@@ -219,6 +219,32 @@ namespace AuthenticationAppMVC.Services.Impl
                 _logger.LogError(ex, $"Error saving multiple files to cloud for user {userId}");
                 throw;
             }
+        }
+
+        public async Task<CloudMessage> SaveTextToCloudAsync(string userId, string content)
+        {
+            // Kiểm tra người dùng có tồn tại không
+            var user = await _appDbContext.Users.FindAsync(userId);
+            if (user == null)
+            {
+                throw new ArgumentException("Người dùng không tồn tại");
+            }
+
+            // Tạo cloud message
+            var cloudMessage = new CloudMessage
+            {
+                Id = Guid.NewGuid().ToString(),
+                UserId = userId,
+                Content = content,
+                CreatedAt = DateTime.UtcNow,
+                HasAttachment = false
+            };
+
+            // Lưu vào database
+            _appDbContext.CloudMessages.Add(cloudMessage);
+            await _appDbContext.SaveChangesAsync();
+
+            return cloudMessage;
         }
 
         public async Task<CloudMessage> SaveToCloudAsync(string userId, string content, IFormFile file)

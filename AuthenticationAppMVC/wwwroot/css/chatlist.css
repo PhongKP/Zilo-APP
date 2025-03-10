@@ -1373,6 +1373,173 @@
     display: inline-block;
 }
 
+/* CSS cho tin nhắn cloud */
+.cloud-message {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    margin: 10px 0;
+    align-self: flex-end;
+    max-width: 80%;
+    margin-left: auto;
+    margin-right: 10px;
+}
+
+    .cloud-message .cloud-message-header {
+        display: flex;
+        justify-content: flex-end;
+        width: 100%;
+        margin-bottom: 3px;
+        font-size: 0.8rem;
+        color: #888;
+    }
+
+    .cloud-message .timestamp {
+        margin-right: 10px;
+    }
+
+    .cloud-message .message-content {
+        background-color: #dcf8c6; /* Màu xanh nhạt giống WhatsApp */
+        padding: 10px;
+        border-radius: 10px 0 10px 10px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        position: relative;
+        word-break: break-word;
+        max-width: 100%;
+    }
+
+        .cloud-message .message-content p {
+            margin: 0 0 8px 0;
+        }
+
+            .cloud-message .message-content p:last-child {
+                margin-bottom: 0;
+            }
+
+    .cloud-message .btn-delete-cloud {
+        background: none;
+        border: none;
+        color: #aaa;
+        cursor: pointer;
+        padding: 0;
+        margin-left: 5px;
+        font-size: 0.9rem;
+        opacity: 0.6;
+        transition: opacity 0.2s;
+    }
+
+        .cloud-message .btn-delete-cloud:hover {
+            opacity: 1;
+            color: #e74c3c;
+        }
+
+    /* Cải thiện hiển thị file đính kèm */
+    .cloud-message .message-attachments {
+        margin-top: 8px;
+        width: 100%;
+    }
+
+    .cloud-message .attachment-item {
+        margin-bottom: 8px;
+        border-radius: 8px;
+        overflow: hidden;
+        background-color: rgba(255, 255, 255, 0.6);
+    }
+
+        .cloud-message .attachment-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .cloud-message .attachment-item.image {
+            max-width: 100%;
+        }
+
+            .cloud-message .attachment-item.image img {
+                max-width: 100%;
+                max-height: 300px;
+                display: block;
+                border-radius: 8px;
+            }
+
+        .cloud-message .attachment-item.file {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            background-color: rgba(255, 255, 255, 0.7);
+            border-radius: 8px;
+        }
+
+            .cloud-message .attachment-item.file i {
+                font-size: 24px;
+                margin-right: 10px;
+                color: #4a76a8;
+            }
+
+    .cloud-message .attachment-info {
+        margin-top: 5px;
+        font-size: 0.85rem;
+        padding: 0 8px 5px;
+    }
+
+    .cloud-message .attachment-name {
+        font-weight: bold;
+        display: block;
+        word-break: break-word;
+    }
+
+    .cloud-message .attachment-size {
+        color: #777;
+        font-size: 0.8em;
+    }
+
+    /* Hiệu ứng hover cho attachment */
+    .cloud-message .attachment-item a {
+        text-decoration: none;
+        color: inherit;
+        display: block;
+        transition: transform 0.2s;
+    }
+
+        .cloud-message .attachment-item a:hover {
+            transform: scale(1.02);
+        }
+
+/* CSS cho container thông tin lưu trữ */
+.storage-info-container {
+    width: 100%;
+    padding: 15px;
+    margin-bottom: 10px;
+    background-color: #f8f9fa;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.storage-info {
+    width: 100%;
+}
+
+.storage-progress {
+    height: 8px;
+    background-color: #e9ecef;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    overflow: hidden;
+}
+
+.storage-progress-bar {
+    height: 100%;
+    background-color: #4a76a8;
+    border-radius: 4px;
+    transition: width 0.3s;
+}
+
+.storage-details {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: #666;
+}
+
 @keyframes toast-progress {
     from {
         width: 100%;

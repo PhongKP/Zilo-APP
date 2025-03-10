@@ -244,6 +244,80 @@ namespace AuthenticationAppMVC.Controllers
             }
         }
 
+        [HttpGet]
+        public async Task<IActionResult> DownloadCloudFile(string fileId)
+        {
+            var currentUser = await userManager.GetUserAsync(User);
+            if (currentUser == null) return Unauthorized();
+
+            try
+            {
+                // Tìm attachment trong database
+                var attachment = await _dbContext.CloudAttachments
+                    .Include(a => a.CloudMessage)
+                    .FirstOrDefaultAsync(a => a.Id == fileId);
+
+                if (attachment == null)
+                {
+                    return NotFound("File không tồn tại.");
+                }
+
+                // Kiểm tra quyền sở hữu
+                if (attachment.CloudMessage.UserId != currentUser.Id)
+                {
+                    return Forbid("Bạn không có quyền truy cập file này.");
+                }
+
+                return Ok(attachment.StoragePath);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Lỗi khi tải file từ cloud");
+                return StatusCode(500, "Đã xảy ra lỗi khi tải file.");
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UploadTextToCloud([FromForm] string content)
+        {
+            var currentUser = await userManager.GetUserAsync(User);
+            if (currentUser == null) return Unauthorized();
+
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                return Json(new { success = false, message = "Nội dung không được để trống." });
+            }
+
+            try
+            {
+                // Sử dụng service để lưu văn bản
+                var cloudMessage = await cloudService.SaveTextToCloudAsync(currentUser.Id, content);
+
+                return Json(new
+                {
+                    success = true,
+                    message = "Đã lưu ghi chú vào Cloud thành công!",
+                    cloudMessage = new
+                    {
+                        id = cloudMessage.Id,
+                        content = cloudMessage.Content,
+                        createdAt = cloudMessage.CreatedAt,
+                        hasAttachment = false,
+                        attachments = new List<object>()
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Lỗi khi lưu ghi chú vào cloud");
+                return Json(new
+                {
+                    success = false,
+                    message = "Đã xảy ra lỗi khi lưu ghi chú. Vui lòng thử lại sau."
+                });
+            }
+        }
+
         [HttpPost]
         public async Task<IActionResult> DeleteCloudMessage(string messageId)
         {

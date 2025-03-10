@@ -276,7 +276,11 @@ function setupEventHandlers() {
     // Contact selection
     document.querySelectorAll(".contact").forEach(item => {
         item.addEventListener("click", function () {
-            selectContact(this);
+            if (this.getAttribute("data-is-cloud") === "true") {
+                selectCloudContact();
+            } else {
+                selectContact(this);
+            }
         });
     });
 
@@ -342,6 +346,40 @@ function setupEventHandlers() {
             modalSearchUsers.style.display = "none";
         }
     });
+
+    // Track changes to current chat type
+    const originalSendButton = sendButton.innerHTML;
+
+    // Cập nhật nút gửi khi chuyển đổi giữa các chế độ chat
+    function updateSendButtonState() {
+        if (currentChatType === 'cloud') {
+            sendButton.innerHTML = '<i class="bi bi-cloud-upload"></i>';
+            sendButton.setAttribute('title', 'Lưu vào Cloud');
+        } else {
+            sendButton.innerHTML = originalSendButton;
+            sendButton.setAttribute('title', 'Gửi tin nhắn');
+        }
+    }
+
+    // Lắng nghe sự kiện khi tab contacts được click
+    tabContacts.addEventListener("click", function () {
+        setTimeout(updateSendButtonState, 100); // Đợi DOM cập nhật xong
+    });
+
+    // Lắng nghe sự kiện khi tab groups được click
+    tabGroups.addEventListener("click", function () {
+        setTimeout(updateSendButtonState, 100); // Đợi DOM cập nhật xong
+    });
+
+    // Lắng nghe sự kiện khi một liên hệ được click
+    document.querySelectorAll(".contact, .group-item").forEach(item => {
+        item.addEventListener("click", function () {
+            setTimeout(updateSendButtonState, 100); // Đợi DOM cập nhật xong
+        });
+    });
+
+    // Cập nhật trạng thái ban đầu
+    updateSendButtonState();
 }
 
 // File selection handling
@@ -660,7 +698,9 @@ async function sendMessage() {
     if (!content && selectedFiles.length === 0) return;
 
     try {
-        if (currentChatType === "contact" && currentReceiverId) {
+        if (currentChatType === "cloud") {
+            await uploadToCloud();
+        } else if (currentChatType === "contact" && currentReceiverId) {
             if (selectedFiles.length > 0) {
                 await sendMessageWithFile(currentReceiverId, content);
             } else {
@@ -1403,6 +1443,273 @@ function markAllMessagesAsRead(contactEmail = null, groupId = null) {
     } else if (groupId) {
         connection.invoke("MarkAllGroupMessagesAsRead", groupId)
             .catch(err => console.error(`Error marking group messages as read: ${err.toString()}`));
+    }
+}
+
+// Hàm chọn liên hệ cloud
+function selectCloudContact() {
+    // Reset all active states
+    document.querySelectorAll(".contact, .group-item").forEach(c => c.classList.remove("active"));
+
+    // Clear file selection
+    clearFileSelection();
+
+    // Get the cloud contact element
+    const cloudContact = document.querySelector('.contact[data-is-cloud="true"]');
+    if (cloudContact) {
+        // Set this contact as active
+        cloudContact.classList.add("active");
+
+        // Update state
+        selectedContact = "Cloud của tôi@gmail.com";
+        currentReceiverId = cloudContact.getAttribute("data-user-id");
+        currentChatType = "cloud";
+        currentGroupId = "";
+
+        // Update UI
+        contactNameElement.textContent = "Cloud của tôi";
+        headerMemberCount.textContent = "";
+        groupActionsDiv.style.display = "none";
+
+        // Cập nhật placeholder và icon cho nút gửi
+        messageInput.placeholder = 'Nhập nội dung hoặc đính kèm file để lưu vào Cloud...';
+        sendButton.innerHTML = '<i class="bi bi-cloud-upload"></i>';
+        sendButton.setAttribute('title', 'Lưu vào Cloud');
+
+        // Clear chat and load cloud files
+        chatContent.innerHTML = "";
+        loadCloudFiles();
+    }
+}
+
+// Hàm tải dữ liệu lưu trữ cloud
+async function loadCloudFiles() {
+    try {
+        const response = await fetch('/Chat/GetCloudStorageData');
+        const data = await response.json();
+
+        if (data.success) {
+            // Clear existing messages
+            chatContent.innerHTML = "";
+
+            // Hiển thị thông tin dung lượng
+            const storageInfo = data.storageInfo;
+            const storageInfoDiv = document.createElement('div');
+            storageInfoDiv.className = 'storage-info-container';
+            storageInfoDiv.innerHTML = `
+                <div class="storage-info">
+                    <div class="storage-progress">
+                        <div class="storage-progress-bar" style="width: ${storageInfo.percentage}%"></div>
+                    </div>
+                    <div class="storage-details">
+                        <span>${storageInfo.usedFormatted} / ${storageInfo.limitFormatted}</span>
+                        <span>${storageInfo.percentage.toFixed(1)}% đã sử dụng</span>
+                    </div>
+                </div>
+            `;
+            chatContent.appendChild(storageInfoDiv);
+
+            // Hiển thị danh sách tin nhắn và file
+            // Tin nhắn đã được sắp xếp từ sớm đến muộn bởi API
+            data.messages.forEach(msg => {
+                appendCloudMessage(msg);
+            });
+
+            // Scroll to bottom để hiển thị tin nhắn mới nhất
+            chatContent.scrollTop = chatContent.scrollHeight;
+        } else {
+            chatContent.innerHTML = `
+                <div class="error-message">
+                    <p>Không thể tải dữ liệu Cloud. ${data.message}</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error("Error loading cloud files:", error);
+        chatContent.innerHTML = `
+            <div class="error-message">
+                <p>Đã xảy ra lỗi khi tải dữ liệu Cloud.</p>
+            </div>
+        `;
+    }
+}
+
+// Hàm hiển thị tin nhắn cloud
+function appendCloudMessage(message) {
+    const div = document.createElement("div");
+    div.classList.add("message", "cloud-message");
+    div.setAttribute("data-message-id", message.id);
+
+    const timestamp = new Date(message.createdAt).toLocaleTimeString();
+
+    // Tạo HTML cho các tệp đính kèm
+    let attachmentsHtml = '';
+    if (message.attachments && message.attachments.length > 0) {
+        attachmentsHtml = '<div class="message-attachments">';
+        message.attachments.forEach(attachment => {
+            const fileExtension = attachment.fileName.split('.').pop().toLowerCase();
+            let attachmentHtml = '';
+
+            // Sử dụng storagePath trực tiếp từ dữ liệu attachment
+            const cloudinaryUrl = attachment.storagePath;
+
+            if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExtension)) {
+                // Image preview với URL Cloudinary
+                attachmentHtml = `
+                    <div class="attachment-item image">
+                        <a href="${cloudinaryUrl}" target="_blank">
+                            <img src="${cloudinaryUrl}" alt="${attachment.fileName}">
+                        </a>
+                        <div class="attachment-info">
+                            <span class="attachment-name">${attachment.fileName}</span>
+                            <span class="attachment-size">${formatFileSize(attachment.fileSize)}</span>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // Generic file
+                let icon = 'fas fa-file';
+                if (['pdf'].includes(fileExtension)) icon = 'fas fa-file-pdf';
+                else if (['doc', 'docx'].includes(fileExtension)) icon = 'fas fa-file-word';
+                else if (['xls', 'xlsx'].includes(fileExtension)) icon = 'fas fa-file-excel';
+                else if (['ppt', 'pptx'].includes(fileExtension)) icon = 'fas fa-file-powerpoint';
+                else if (['zip', 'rar', '7z'].includes(fileExtension)) icon = 'fas fa-file-archive';
+                else if (['mp3', 'wav', 'ogg'].includes(fileExtension)) icon = 'fas fa-file-audio';
+                else if (['mp4', 'avi', 'mov', 'wmv'].includes(fileExtension)) icon = 'fas fa-file-video';
+
+                attachmentHtml = `
+                    <div class="attachment-item file">
+                        <a href="${cloudinaryUrl}" target="_blank">
+                            <i class="${icon}"></i>
+                            <div class="attachment-info">
+                                <span class="attachment-name">${attachment.fileName}</span>
+                                <span class="attachment-size">${formatFileSize(attachment.fileSize)}</span>
+                            </div>
+                        </a>
+                    </div>
+                `;
+            }
+
+            attachmentsHtml += attachmentHtml;
+        });
+        attachmentsHtml += '</div>';
+    }
+
+    div.innerHTML = `
+        <div class="cloud-message-header">
+            <span class="timestamp">${timestamp}</span>
+            <button class="btn-delete-cloud" data-message-id="${message.id}" title="Xóa">
+                <i class="bi bi-trash"></i>
+            </button>
+        </div>
+        <div class="message-content">
+            ${message.content ? `<p>${message.content}</p>` : ''}
+            ${attachmentsHtml}
+        </div>
+    `;
+
+    // Add event listener to delete button
+    div.querySelector('.btn-delete-cloud').addEventListener('click', function () {
+        const messageId = this.getAttribute('data-message-id');
+        if (confirm('Bạn có chắc chắn muốn xóa nội dung này không?')) {
+            deleteCloudMessage(messageId);
+        }
+    });
+
+    chatContent.appendChild(div);
+}
+
+// Hàm xóa tin nhắn cloud
+async function deleteCloudMessage(messageId) {
+    try {
+        const response = await fetch('/Chat/DeleteCloudMessage', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `messageId=${messageId}`
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Remove message from UI
+            const messageElement = document.querySelector(`.cloud-message[data-message-id="${messageId}"]`);
+            if (messageElement) {
+                messageElement.remove();
+            }
+
+            // Reload cloud files to update storage info
+            loadCloudFiles();
+
+            toastr.success('Nội dung đã được xóa thành công!');
+        } else {
+            toastr.error(result.message || 'Không thể xóa nội dung.');
+        }
+    } catch (error) {
+        console.error('Error deleting cloud message:', error);
+        toastr.error('Đã xảy ra lỗi khi xóa nội dung.');
+    }
+}
+
+// Hàm gửi file lên cloud
+async function uploadToCloud() {
+    const content = messageInput.value.trim();
+    try {
+        // Xác định endpoint dựa vào có file đính kèm hay không
+        let endpoint = '/Chat/UploadTextToCloud';
+        const formData = new FormData();
+        formData.append('content', content);
+
+        if (selectedFiles.length > 0) {
+            // Nếu có file đính kèm, sử dụng endpoint cho file
+            endpoint = '/Chat/UploadToCloud';
+
+            // Thêm files vào formData
+            selectedFiles.forEach(file => {
+                formData.append('files', file);
+            });
+
+            // Kiểm tra nếu không có nội dung và không có file
+            if (!content && selectedFiles.length === 0) {
+                toastr.error('Vui lòng nhập nội dung hoặc chọn file để lưu vào Cloud.');
+                return;
+            }
+
+            toastr.info('Đang tải file lên Cloud...');
+        } else {
+            // Đây là trường hợp chỉ có text
+            if (!content) {
+                toastr.error('Vui lòng nhập nội dung để lưu vào Cloud.');
+                return;
+            }
+            toastr.info('Đang lưu ghi chú vào Cloud...');
+        }
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Clear input và file selection
+            messageInput.value = "";
+            clearFileSelection();
+
+            // Thông báo thành công
+            toastr.success('Đã lưu nội dung vào Cloud thành công!');
+
+            // Reload cloud files và đảm bảo cuộn xuống dưới sau khi tải lại
+            await loadCloudFiles();
+            chatContent.scrollTop = chatContent.scrollHeight;
+        } else {
+            toastr.error(result.message || 'Không thể lưu nội dung.');
+        }
+    } catch (error) {
+        console.error('Error uploading to cloud:', error);
+        toastr.error('Đã xảy ra lỗi khi lưu nội dung vào Cloud.');
     }
 }
 
