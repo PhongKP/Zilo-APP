@@ -29,6 +29,8 @@ namespace AuthenticationAppMVC.Data
         public DbSet<CloudMessage> CloudMessages { get; set; }
         public DbSet<CloudAttachment> CloudAttachments { get; set; }
         public DbSet<UserStorage> UserStorages { get; set; }
+        public DbSet<Call> Calls { get; set; }
+        public DbSet<CallParticipant> CallParticipants { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -151,6 +153,43 @@ namespace AuthenticationAppMVC.Data
                 .WithOne()
                 .HasForeignKey<UserStorage>(us => us.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // Cấu hình quan hệ giữa Call và Caller
+            builder.Entity<Call>()
+                .HasOne(c => c.Caller)
+                .WithMany()
+                .HasForeignKey(c => c.CallerId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // Cấu hình quan hệ giữa Call và Recipient (nếu có)
+            builder.Entity<Call>()
+                .HasOne(c => c.Recipient)
+                .WithMany()
+                .HasForeignKey(c => c.RecipientId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // Cấu hình quan hệ giữa Call và Group (nếu có)
+            builder.Entity<Call>()
+                .HasOne(c => c.Group)
+                .WithMany()
+                .HasForeignKey(c => c.GroupId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // Cấu hình quan hệ giữa Call và CallParticipant
+            builder.Entity<Call>()
+                .HasMany(c => c.Participants)
+                .WithOne(cp => cp.Call)
+                .HasForeignKey(cp => cp.CallId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Cấu hình quan hệ giữa CallParticipant và User
+            builder.Entity<CallParticipant>()
+                .HasOne(cp => cp.User)
+                .WithMany()
+                .HasForeignKey(cp => cp.UserId)
+                .OnDelete(DeleteBehavior.NoAction);
         }
     }
 }
