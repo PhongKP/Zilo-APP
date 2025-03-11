@@ -190,6 +190,7 @@ namespace AuthenticationAppMVC.Data
                 .WithMany()
                 .HasForeignKey(cp => cp.UserId)
                 .OnDelete(DeleteBehavior.NoAction);
+
         }
     }
 }
