@@ -33,6 +33,9 @@ namespace AuthenticationAppMVC.Models
         [ForeignKey("GroupId")]
         public virtual Group Group { get; set; }
 
+        [NotMapped]
+        public bool IsGroupCall => !string.IsNullOrEmpty(GroupId);
+
         // Các participant cho cuộc gọi nhóm
         public virtual ICollection<CallParticipant> Participants { get; set; } = new List<CallParticipant>();
     }

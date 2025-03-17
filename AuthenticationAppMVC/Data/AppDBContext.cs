@@ -177,11 +177,11 @@ namespace AuthenticationAppMVC.Data
                 .IsRequired(false)
                 .OnDelete(DeleteBehavior.NoAction);
 
-            // Cấu hình quan hệ giữa Call và CallParticipant
-            builder.Entity<Call>()
-                .HasMany(c => c.Participants)
-                .WithOne(cp => cp.Call)
-                .HasForeignKey(cp => cp.CallId)
+            // Cấu hình mối quan hệ giữa Call và CallParticipant
+            builder.Entity<CallParticipant>()
+                .HasOne(p => p.Call)
+                .WithMany(c => c.Participants)
+                .HasForeignKey(p => p.CallId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             // Cấu hình quan hệ giữa CallParticipant và User
@@ -190,7 +190,6 @@ namespace AuthenticationAppMVC.Data
                 .WithMany()
                 .HasForeignKey(cp => cp.UserId)
                 .OnDelete(DeleteBehavior.NoAction);
-
         }
     }
 }

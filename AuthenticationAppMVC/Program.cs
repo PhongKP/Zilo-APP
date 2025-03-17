@@ -62,6 +62,7 @@ namespace AuthenticationAppMVC
             builder.Services.AddScoped<FileService>();
             builder.Services.AddScoped<IFriendsService, FriendsServiceImpl>();
             builder.Services.AddScoped<ICloudService, CloudServiceImpl>();
+            builder.Services.AddScoped<ICallService, CallServiceImpl>();
 
             builder.Services.AddSignalR();
 
@@ -84,6 +85,7 @@ namespace AuthenticationAppMVC
             app.UseAuthorization();
             app.MapHub<Chathub>("/chathub");
             app.MapHub<FriendsHub>("/friendshub");
+            app.MapHub<CallHub>("/callhub");
 
             app.MapControllerRoute(
                 name: "default",
