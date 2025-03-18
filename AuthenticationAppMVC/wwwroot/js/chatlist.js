@@ -390,81 +390,81 @@ let currentSelectedChat = {
 };
 
 // Call Button
-//$(document).ready(function () {
-//    // Code hiện tại giữ nguyên
+$(document).ready(function () {
+    // Code hiện tại giữ nguyên
 
-//    // Xử lý sự kiện chọn một liên hệ
-//    $(document).on('click', '.contact', function () {
-//        // Thêm code hiển thị/ẩn nút gọi điện
-//        if (!$(this).hasClass('cloud-storage')) {
-//            // Lưu thông tin người dùng được chọn
-//            currentSelectedChat = {
-//                userId: $(this).data('user-id'),
-//                groupId: null,
-//                isGroup: false,
-//                name: $(this).find('span').text()
-//            };
+    // Xử lý sự kiện chọn một liên hệ
+    $(document).on('click', '.contact', function () {
+        // Thêm code hiển thị/ẩn nút gọi điện
+        if (!$(this).hasClass('cloud-storage')) {
+            // Lưu thông tin người dùng được chọn
+            currentSelectedChat = {
+                userId: $(this).data('user-id'),
+                groupId: null,
+                isGroup: false,
+                name: $(this).find('span').text()
+            };
 
-//            // Hiển thị nút gọi điện
-//            $('.call-actions').show();
-//            $('.group-actions').hide();
-//        } else {
-//            // Nếu chọn Cloud, ẩn nút gọi điện
-//            $('.call-actions').hide();
-//            $('.group-actions').hide();
+            // Hiển thị nút gọi điện
+            $('.call-actions').show();
+            $('.group-actions').hide();
+        } else {
+            // Nếu chọn Cloud, ẩn nút gọi điện
+            $('.call-actions').hide();
+            $('.group-actions').hide();
 
-//            // Reset thông tin chat đang chọn
-//            currentSelectedChat = {
-//                userId: null,
-//                groupId: null,
-//                isGroup: false,
-//                name: ''
-//            };
-//        }
-//    });
+            // Reset thông tin chat đang chọn
+            currentSelectedChat = {
+                userId: null,
+                groupId: null,
+                isGroup: false,
+                name: ''
+            };
+        }
+    });
 
-//    // Xử lý sự kiện chọn một nhóm
-//    $(document).on('click', '.group', function () {
-//        // Lưu thông tin nhóm được chọn
-//        currentSelectedChat = {
-//            userId: null,
-//            groupId: $(this).data('group-id'),
-//            isGroup: true,
-//            name: $(this).find('.group-name').text()
-//        };
+    // Xử lý sự kiện chọn một nhóm
+    $(document).on('click', '.group', function () {
+        // Lưu thông tin nhóm được chọn
+        currentSelectedChat = {
+            userId: null,
+            groupId: $(this).data('group-id'),
+            isGroup: true,
+            name: $(this).find('.group-name').text()
+        };
 
-//        // Hiển thị nút gọi điện và các thao tác nhóm
-//        $('.call-actions').show();
-//        $('.group-actions').show();
-//    });
+        // Hiển thị nút gọi điện và các thao tác nhóm
+        $('.call-actions').show();
+        $('.group-actions').show();
+    });
 
-//    // Xử lý sự kiện nhấp vào nút gọi thoại
-//    $('#btn-audio-call').on('click', function () {
-//        initiateCall(0); // 0: Audio
-//    });
+    // Xử lý sự kiện nhấp vào nút gọi thoại
+    $('#btn-audio-call').on('click', function () {
+        initiateCall(0); // 0: Audio
+    });
 
-//    // Xử lý sự kiện nhấp vào nút gọi video
-//    $('#btn-video-call').on('click', function () {
-//        initiateCall(1); // 1: Video
-//    });
+    // Xử lý sự kiện nhấp vào nút gọi video
+    $('#btn-video-call').on('click', function () {
+        initiateCall(1); // 1: Video
+    });
 
-//    // Hàm xử lý bắt đầu cuộc gọi
-//    function initiateCall(callType) {
-//        // Kiểm tra xem có chat nào được chọn chưa
-//        if (!currentSelectedChat.userId && !currentSelectedChat.groupId) {
-//            toastr.warning('Vui lòng chọn một liên hệ hoặc nhóm để gọi');
-//            return;
-//        }
+    // Hàm xử lý bắt đầu cuộc gọi
+    function initiateCall(callType) {
+        // Kiểm tra xem có chat nào được chọn chưa
+        if (!currentSelectedChat.userId && !currentSelectedChat.groupId) {
+            toastr.warning('Vui lòng chọn một liên hệ hoặc nhóm để gọi');
+            return;
+        }
 
-//        if (currentSelectedChat.isGroup) {
-//            // Chuyển hướng đến trang cuộc gọi nhóm
-//            window.open(`/Call/Group/${currentSelectedChat.groupId}?type=${callType}`, '_blank', 'width=800,height=600');
-//        } else {
-//            // Chuyển hướng đến trang cuộc gọi cá nhân
-//            window.open(`/Call/User/${currentSelectedChat.userId}?type=${callType}`, '_blank', 'width=800,height=600');
-//        }
-//    }
-//});
+        if (currentSelectedChat.isGroup) {
+            // Chuyển hướng đến trang cuộc gọi nhóm
+            window.open(`/Call/Group/${currentSelectedChat.groupId}?type=${callType}`, '_blank', 'width=800,height=600');
+        } else {
+            // Chuyển hướng đến trang cuộc gọi cá nhân
+            window.open(`/Call/User/${currentSelectedChat.userId}?type=${callType}`, '_blank', 'width=800,height=600');
+        }
+    }
+});
 
 // File selection handling
 function handleFileSelect(event) {

@@ -1,0 +1,130 @@
+﻿@model AuthenticationAppMVC.ViewModels.CallViewModel
+
+@{
+    ViewData["Title"] = Model.IsGroup ? $"Cuộc gọi với {Model.GroupName}" : $"Cuộc gọi với {Model.RecipientName}";
+    Layout = "_Layout";
+}
+
+<link rel="stylesheet" href="~/css/call.css" asp-append-version="true">
+
+<div class="call-container">
+    <div class="call-header">
+        <div class="call-info">
+            @if (Model.IsGroup)
+            {
+                <h1>Cuộc gọi nhóm: @Model.GroupName</h1>
+                <span class="call-type">@(Model.CallType == CallType.Audio ? "Cuộc gọi thoại" : "Cuộc gọi video")</span>
+            }
+            else
+            {
+                <h1>Cuộc gọi với: @Model.RecipientName</h1>
+                <span class="call-type">@(Model.CallType == CallType.Audio ? "Cuộc gọi thoại" : "Cuộc gọi video")</span>
+            }
+        </div>
+        <div class="call-actions-top">
+            <button id="btn-minimize" class="btn-call-action" title="Thu nhỏ">
+                <i class="bi bi-dash"></i>
+            </button>
+            <button id="btn-close" class="btn-call-action" title="Kết thúc và đóng">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="call-content">
+        <div class="call-status" id="call-status">
+            <span>Đang kết nối...</span>
+        </div>
+
+        <div class="call-streams">
+            <div class="remote-stream-container">
+                <video id="remote-video" class="remote-stream" autoplay playsinline></video>
+                <div class="call-info-overlay">
+                    @if (Model.IsGroup)
+                    {
+                        <div class="caller-avatar">
+                            <img src="@Model.GroupAvatar" alt="@Model.GroupName" onerror="this.src='/images/default-group.png';" />
+                        </div>
+                        <div class="caller-name">@Model.GroupName</div>
+                    }
+                    else
+                    {
+                        <div class="caller-avatar">
+                            <img src="@Model.RecipientAvatar" alt="@Model.RecipientName" onerror="this.src='/images/default-avatar.png';" />
+                        </div>
+                        <div class="caller-name">@Model.RecipientName</div>
+                    }
+                </div>
+            </div>
+            <div class="local-stream-container">
+                <video id="local-video" class="local-stream" autoplay playsinline muted></video>
+            </div>
+        </div>
+
+        <div class="call-controls">
+            <button id="btn-toggle-audio" class="btn-control" title="Tắt/Mở mic">
+                <i class="bi bi-mic-fill"></i>
+            </button>
+            @if (Model.CallType == CallType.Video) // Video call
+            {
+                <button id="btn-toggle-video" class="btn-control" title="Tắt/Mở camera">
+                    <i class="bi bi-camera-video-fill"></i>
+                </button>
+            }
+            <button id="btn-toggle-screen" class="btn-control" title="Chia sẻ màn hình">
+                <i class="bi bi-display-fill"></i>
+            </button>
+            <button id="btn-end-call" class="btn-control btn-danger" title="Kết thúc cuộc gọi">
+                <i class="bi bi-telephone-x-fill"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="participants-container" id="participants-list">
+        <h2>Người tham gia (@(Model.IsGroup ? "0" : "2"))</h2>
+        <div class="participants-list">
+            @if (!Model.IsGroup)
+            {
+                <div class="participant" data-user-id="@Model.CurrentUserId">
+                    <div class="participant-avatar">
+                        <img src="/images/default-avatar.png" alt="Bạn" />
+                    </div>
+                    <div class="participant-info">
+                        <div class="participant-name">Bạn</div>
+                        <div class="participant-status"><span class="status-connected">Đã kết nối</span></div>
+                    </div>
+                </div>
+                <div class="participant" data-user-id="@Model.RecipientId">
+                    <div class="participant-avatar">
+                        <img src="@Model.RecipientAvatar" alt="@Model.RecipientName" onerror="this.src='/images/default-avatar.png';" />
+                    </div>
+                    <div class="participant-info">
+                        <div class="participant-name">@Model.RecipientName</div>
+                        <div class="participant-status"><span class="status-connecting">Đang kết nối...</span></div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Thêm các scripts cần thiết -->
+<script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+<script src="~/js/call.js" asp-append-version="true"></script>
+
+<script>
+    const callConfig = {
+        userId: '@Model.CurrentUserId',
+        callId: '@Model.CallId',
+        callType: @Model.CallType,
+        isGroup: @Json.Serialize(Model.IsGroup),
+        recipientId: '@Model.RecipientId',
+        groupId: '@Model.GroupId',
+        iceTurnServers: @Html.Raw(Json.Serialize(new[] {
+            new { urls = "stun:stun.l.google.com:19302" },
+            new { urls = "stun:stun1.l.google.com:19302" },
+            // Thêm TURN server nếu có
+        }))
+    };
+</script>

@@ -63,7 +63,7 @@ namespace AuthenticationAppMVC.Controllers
             {
                 RecipientId = userId,
                 RecipientName = recipient.UserName,
-                RecipientAvatar = recipient.ProfilePicture ?? "/images/default-avatar.png",
+                RecipientAvatar = recipient.ProfilePicture ?? "/img/user_ava.svg",
                 IsGroup = false,
                 CallType = callType,
                 CurrentUserId = currentUserId
@@ -108,7 +108,7 @@ namespace AuthenticationAppMVC.Controllers
             {
                 GroupId = groupId,
                 GroupName = group.Name,
-                GroupAvatar = group.Avatar ?? "/images/default-group.png",
+                GroupAvatar = group.Avatar ?? "/img/user_ava.svg",
                 IsGroup = true,
                 CallType = callType,
                 CurrentUserId = currentUserId
@@ -165,7 +165,7 @@ namespace AuthenticationAppMVC.Controllers
                     CallId = callId,
                     GroupId = call.GroupId,
                     GroupName = group.Name,
-                    GroupAvatar = group.Avatar ?? "/images/default-group.png",
+                    GroupAvatar = group.Avatar ?? "/img/user_ava.svg",
                     IsGroup = true,
                     CallType = call.Type,
                     CurrentUserId = currentUserId
@@ -486,7 +486,7 @@ namespace AuthenticationAppMVC.Controllers
         }
 
         // API để lấy thông tin chi tiết cuộc gọi
-        [HttpGet("{callId}")]
+        [HttpGet("details/{callId}")]
         public async Task<IActionResult> GetCallDetails(string callId)
         {
             try
